@@ -63,7 +63,12 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <dirent.h>
 #include <fcntl.h>
+#include <limits.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <drm_master.h>
 #include <display/drm/sde_drm.h>
 #include <utils/debug.h>
 #include <utils/sys.h>
@@ -87,6 +92,38 @@ using sde_drm::DRMPanelFeatureInfo;
 using sde_drm::DRMSecureMode;
 
 namespace sdm {
+
+static const char kBacklightClassPath[] = "/sys/class/backlight/";
+
+// Upstream panel drivers name their backlight after the device, such as ae94000.dsi.0, so pick
+// the backlight that sits below a DSI device and fall back to the first one present
+static std::string FindUpstreamPanelBacklight() {
+  std::string first = {};
+  DIR *dir = opendir(kBacklightClassPath);
+  if (!dir) {
+    return first;
+  }
+
+  while (struct dirent *entry = readdir(dir)) {
+    if (entry->d_name[0] == '.') {
+      continue;
+    }
+
+    std::string path = std::string(kBacklightClassPath) + entry->d_name;
+    char device_path[PATH_MAX] = {};
+    if (realpath(path.c_str(), device_path) && strstr(device_path, ".dsi")) {
+      closedir(dir);
+      return path + "/";
+    }
+
+    if (first.empty()) {
+      first = path + "/";
+    }
+  }
+
+  closedir(dir);
+  return first;
+}
 
 HWPeripheralDRM::HWPeripheralDRM(int32_t display_id, BufferAllocator *buffer_allocator,
                                  HWInfoInterface *hw_info_intf)
@@ -885,6 +922,14 @@ void HWPeripheralDRM::GetHWPanelMaxBrightness() {
   snprintf(s, sizeof(s), "/sys/class/backlight/panel%d-backlight/",
            static_cast<int>(connector_info_.type_id - 1));
   brightness_base_path_.assign(s);
+
+  if (access(brightness_base_path_.c_str(), F_OK) && drm_utils::kUpstreamMsm) {
+    std::string path = FindUpstreamPanelBacklight();
+    if (!path.empty()) {
+      brightness_base_path_ = path;
+    }
+  }
+  DLOGI("Panel backlight path %s", brightness_base_path_.c_str());
 
   std::string brightness_node(brightness_base_path_ + "max_brightness");
   int fd = Sys::open_(brightness_node.c_str(), O_RDONLY);
