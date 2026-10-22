@@ -28,6 +28,7 @@
 #include <binder/Parcel.h>
 #include <core/buffer_allocator.h>
 #include <cutils/properties.h>
+#include <drm_master.h>
 #include <hardware_legacy/uevent.h>
 #include <private/color_params.h>
 #include <sync/sync.h>
@@ -3831,17 +3832,24 @@ HWC3::Error HWCSession::GetDisplayCapabilities(Display display,
     GetDozeSupport(display, &has_doze_support);
 
     // TODO(user): Handle SKIP_CLIENT_COLOR_TRANSFORM based on DSPP availability
-    if (has_doze_support) {
-      *capabilities = {HwcDisplayCapability::SKIP_CLIENT_COLOR_TRANSFORM,
-                       HwcDisplayCapability::DOZE, HwcDisplayCapability::BRIGHTNESS,
-                       HwcDisplayCapability::PROTECTED_CONTENTS};
-    } else {
-      *capabilities = {HwcDisplayCapability::SKIP_CLIENT_COLOR_TRANSFORM,
-                       HwcDisplayCapability::BRIGHTNESS, HwcDisplayCapability::PROTECTED_CONTENTS};
+    std::vector<HwcDisplayCapability> caps;
+    if (SkipsClientColorTransform()) {
+      caps.push_back(HwcDisplayCapability::SKIP_CLIENT_COLOR_TRANSFORM);
     }
+    if (has_doze_support) {
+      caps.push_back(HwcDisplayCapability::DOZE);
+    }
+    caps.push_back(HwcDisplayCapability::BRIGHTNESS);
+    caps.push_back(HwcDisplayCapability::PROTECTED_CONTENTS);
+    *capabilities = caps;
   }
 
   return HWC3::Error::None;
+}
+
+bool HWCSession::SkipsClientColorTransform() {
+  // Upstream msm has no DSPP to apply the matrix to the composed frame
+  return !drm_utils::kUpstreamMsm;
 }
 
 HWC3::Error HWCSession::GetDisplayConnectionType(Display display, HwcDisplayConnectionType *type) {

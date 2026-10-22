@@ -47,6 +47,7 @@
 #include <algorithm>
 
 #include "display_base.h"
+#include "drm_master.h"
 
 #define __CLASS__ "DisplayBase"
 
@@ -224,7 +225,7 @@ DisplayError DisplayBase::Init() {
   DisplayBase::SetMaxMixerStages(max_mixer_stages);
 
   // Open extension lib
-  if (!extension_lib_) {
+  if (!extension_lib_ && !drm_utils::kUpstreamMsm) {
     if (!extension_lib_.Open(EXTENSION_LIBRARY_NAME)) {
       DLOGW("Unable to open lib %s, error = %s", EXTENSION_LIBRARY_NAME, extension_lib_.Error());
     }

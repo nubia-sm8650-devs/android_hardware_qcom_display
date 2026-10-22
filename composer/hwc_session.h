@@ -218,6 +218,7 @@ class HWCSession : public HWCUEvent,
   HWC3::Error GetDisplayIdentificationData(Display display, uint8_t *outPort, uint32_t *outDataSize,
                                            uint8_t *outData);
   HWC3::Error GetDisplayCapabilities(Display display, hidl_vec<HwcDisplayCapability> *capabilities);
+  bool SkipsClientColorTransform();
   HWC3::Error GetDisplayBrightnessSupport(Display display, bool *outSupport);
   HWC3::Error SetDisplayBrightness(Display display, float brightness);
   HWC3::Error WaitForResources(bool wait_for_resources, Display active_builtin_id,

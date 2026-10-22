@@ -1704,6 +1704,10 @@ DisplayError DisplayBuiltIn::DppsProcessOps(enum DppsOps op, void *payload, size
       }
       break;
     case kDppsSetPccConfig:
+      if (!color_mgr_) {
+        error = kErrorNotSupported;
+        break;
+      }
       error = color_mgr_->ColorMgrSetLtmPccConfig(payload, size);
       if (error != kErrorNone) {
         DLOGE("Failed to set PCC config to ColorManagerProxy, error %d", error);
@@ -2063,6 +2067,11 @@ void DppsInfo::Init(DppsPropIntf *intf, const std::string &panel_name,
   }
   DLOGI("Ready to register display %d-%d ", info_payload.display_id,
         info_payload.display_type);
+
+  if (!dpps_intf_ && drm_utils::kUpstreamMsm) {
+    // libdpps programs SDE DSPP properties, which upstream msm does not have
+    dpps_intf_ = new DppsDummyImpl();
+  }
 
   if (!dpps_intf_) {
     if (!dpps_impl_lib_.Open(kDppsLib_)) {

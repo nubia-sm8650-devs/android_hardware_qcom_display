@@ -38,6 +38,7 @@
 #include <utils/utils.h>
 #include <sys/mman.h>
 #include <private/hw_info_interface.h>
+#include <drm_master.h>
 #include <map>
 #include <vector>
 
@@ -63,6 +64,8 @@ void __llvm_profile_try_write_file(void);
 
 namespace sdm {
 
+using drm_utils::DRMMaster;
+
 CoreImpl::CoreImpl(BufferAllocator *buffer_allocator,
                    SocketHandler *socket_handler, std::shared_ptr<IPCIntf> ipc_intf)
   : buffer_allocator_(buffer_allocator), socket_handler_(socket_handler), ipc_intf_(ipc_intf) {
@@ -72,8 +75,19 @@ DisplayError CoreImpl::Init() {
   SCOPE_LOCK(locker_);
   DisplayError error = kErrorNone;
 
-  // Try to load extension library & get handle to its interface.
-  if (extension_lib_.Open(EXTENSION_LIBRARY_NAME)) {
+  int value = 0;
+  Debug::Get()->GetProperty(ENABLE_NULL_DISPLAY_PROP, &value);
+  enable_null_display_ = (value == 1);
+
+  bool upstream_driver = false;
+#ifndef TARGET_HEADLESS
+  upstream_driver = !enable_null_display_ && drm_utils::kUpstreamMsm;
+#endif
+
+  // The extension drives SDE specific resources and features that upstream msm does not have
+  if (upstream_driver) {
+    DLOGI("Upstream msm driver in use, not loading %s", EXTENSION_LIBRARY_NAME);
+  } else if (extension_lib_.Open(EXTENSION_LIBRARY_NAME)) {
     if (!extension_lib_.Sym(CREATE_EXTENSION_INTERFACE_NAME,
                             reinterpret_cast<void **>(&create_extension_intf_)) ||
         !extension_lib_.Sym(DESTROY_EXTENSION_INTERFACE_NAME,
@@ -97,9 +111,6 @@ DisplayError CoreImpl::Init() {
 #endif
   }
 
-  int value = 0;
-  Debug::Get()->GetProperty(ENABLE_NULL_DISPLAY_PROP, &value);
-  enable_null_display_ = (value == 1);
   DLOGI("property: enable_null_display_ = %d", enable_null_display_);
   if (enable_null_display_) {
     hw_info_intf_ = new HWInfoDefault();
@@ -139,10 +150,15 @@ DisplayError CoreImpl::Init() {
     return kErrorNone;
   }
 
-  error = ColorManagerProxy::Init(hw_resource_);
-  // if failed, doesn't affect display core functionalities.
-  if (error != kErrorNone) {
-    DLOGW("Unable creating color manager and continue without it.");
+  // The color manager programs SDE DSPP features, which upstream msm does not expose
+  if (upstream_driver) {
+    DLOGI("Upstream msm driver in use, not loading the color manager");
+  } else {
+    error = ColorManagerProxy::Init(hw_resource_);
+    // if failed, doesn't affect display core functionalities.
+    if (error != kErrorNone) {
+      DLOGW("Unable creating color manager and continue without it.");
+    }
   }
 
   // Populate hw_displays_info_ once.

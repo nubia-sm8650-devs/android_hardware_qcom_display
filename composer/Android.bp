@@ -53,6 +53,7 @@ cc_binary {
         "libgralloctypes",
         "libdisplayconfig.qti",
         "libdrm",
+        "libdrmutils",
         "libbinder_ndk",
         "android.hardware.common-V2-ndk",
         "vendor.qti.hardware.display.config-V11-ndk",
