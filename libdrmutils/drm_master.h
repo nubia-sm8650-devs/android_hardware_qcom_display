@@ -31,6 +31,7 @@
 #define __DRM_MASTER_H__
 
 #include <mutex>
+#include <string>
 
 #include "drm_logger.h"
 
@@ -48,6 +49,12 @@ struct DRMBuffer {
   uint32_t offset[4] = {};
   uint32_t num_planes = 1;
 };
+
+#ifdef TARGET_USES_UPSTREAM_MSM
+constexpr bool kUpstreamMsm = true;
+#else
+constexpr bool kUpstreamMsm = false;
+#endif
 
 class DRMMaster {
  public:
@@ -75,6 +82,8 @@ class DRMMaster {
   void GetHandle(int *fd) { *fd = dev_fd_; }
   /* Returns true if the ref counted version of rmfb is being used */
   bool IsRmFbRefCounted();
+  /* Opens another fd on the device held by the master, to be closed with drmClose() */
+  int OpenDevice() const;
 
   /* Creates an instance of DRMMaster if it doesn't exist and initializes it. Threadsafe.
    * Input:
@@ -90,6 +99,8 @@ class DRMMaster {
   int Init();
 
   int dev_fd_ = -1;              // Master fd for DRM
+  std::string driver_name_ = {};
+  bool closefb_supported_ = false;
   static DRMMaster *s_instance;  // Singleton instance
   static std::mutex s_lock;
 };

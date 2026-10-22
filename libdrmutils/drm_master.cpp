@@ -47,6 +47,14 @@
 
 #define __CLASS__ "DRMMaster"
 
+#ifndef DRM_IOCTL_MODE_CLOSEFB
+struct drm_mode_closefb {
+  __u32 fb_id;
+  __u32 pad;
+};
+#define DRM_IOCTL_MODE_CLOSEFB DRM_IOWR(0xD0, struct drm_mode_closefb)
+#endif
+
 using std::mutex;
 using std::lock_guard;
 using std::begin;
@@ -81,20 +89,56 @@ void DRMMaster::DestroyInstance() {
   s_instance = nullptr;
 }
 
+#ifdef TARGET_USES_UPSTREAM_MSM
+static const char *const kDriverNames[] = {"msm-kms", "msm"};
+#else
+static const char *const kDriverNames[] = {"msm_drm"};
+#endif
+
+static bool HasModesetResources(int fd) {
+  drmModeRes *res = drmModeGetResources(fd);
+  bool ret = res && res->count_crtcs > 0;
+  drmModeFreeResources(res);
+  return ret;
+}
+
+static bool SupportsCloseFb(int fd) {
+  struct drm_mode_closefb closefb = {};
+  return drmIoctl(fd, DRM_IOCTL_MODE_CLOSEFB, &closefb) && errno == ENOENT;
+}
+
 int DRMMaster::Init() {
-  uint8_t retry = 0;
-  do {
-    dev_fd_ = drmOpen("msm_drm", nullptr);
-    if(dev_fd_ < 0) {
-      DRM_LOGW("drmOpen failed with error %d, retry %d", dev_fd_, retry);
-      if (retry >= MAX_RETRY) {
-        return -ENODEV;
+  for (uint8_t retry = 0; retry <= MAX_RETRY; retry++) {
+    for (const char *name : kDriverNames) {
+      int fd = drmOpen(name, nullptr);
+      if (fd < 0) {
+        continue;
       }
+
+      // The upstream msm driver can expose a GPU only device under the same name
+      if (kUpstreamMsm && !HasModesetResources(fd)) {
+        drmClose(fd);
+        continue;
+      }
+
+      dev_fd_ = fd;
+      driver_name_ = name;
+      closefb_supported_ = kUpstreamMsm && SupportsCloseFb(fd);
+      DLOGI("Opened DRM device of driver %s", name);
+      return 0;
+    }
+
+    DRM_LOGW("drmOpen failed for all display drivers, retry %d", retry);
+    if (retry < MAX_RETRY) {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
-  } while(dev_fd_ < 0 && retry++ < MAX_RETRY);
+  }
 
-  return 0;
+  return -ENODEV;
+}
+
+int DRMMaster::OpenDevice() const {
+  return drmOpen(driver_name_.c_str(), nullptr);
 }
 
 DRMMaster::~DRMMaster() {
@@ -142,6 +186,20 @@ int DRMMaster::CreateFbId(const DRMBuffer &drm_buffer, uint32_t *fb_id) {
 int DRMMaster::RemoveFbId(uint32_t fb_id) {
   lock_guard<mutex> obj(s_lock);
   int ret = 0;
+  if (kUpstreamMsm) {
+    if (closefb_supported_) {
+      // CLOSEFB drops the reference without disabling the planes scanning out of the FB
+      struct drm_mode_closefb closefb = {};
+      closefb.fb_id = fb_id;
+      ret = drmIoctl(dev_fd_, DRM_IOCTL_MODE_CLOSEFB, &closefb);
+    } else {
+      ret = drmModeRmFB(dev_fd_, fb_id);
+    }
+    if (ret) {
+      DRM_LOGE("Closing fb_id %d failed with error %d", fb_id, errno);
+    }
+    return ret;
+  }
 #ifdef DRM_IOCTL_MSM_RMFB2
   ret = drmIoctl(dev_fd_, DRM_IOCTL_MSM_RMFB2, &fb_id);
   if (ret) {
@@ -154,6 +212,9 @@ int DRMMaster::RemoveFbId(uint32_t fb_id) {
 }
 
 bool DRMMaster::IsRmFbRefCounted() {
+  if (kUpstreamMsm) {
+    return closefb_supported_;
+  }
 #ifdef DRM_IOCTL_MSM_RMFB2
   return true;
 #endif

@@ -13,6 +13,7 @@ soong_config_module_type {
         "llvmcov",
         "smmu_proxy",
         "ubwcp_headers",
+        "upstream_msm",
     ],
     properties: [
         "cflags",
@@ -149,6 +150,9 @@ qtidisplay_cc_defaults {
         },
         udfps: {
             cflags: ["-DUDFPS_ZPOS"],
+        },
+        upstream_msm: {
+            cflags: ["-DTARGET_USES_UPSTREAM_MSM"],
         },
         var3 : {
             enabled: false,
