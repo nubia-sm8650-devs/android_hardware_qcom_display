@@ -108,6 +108,7 @@ class DRMPlane {
   typedef std::map<DRMProperty, std::tuple<uint64_t, drmModePropertyRes *>> PropertyMap;
   void ParseProperties();
   void GetTypeInfo(const PropertyMap &props);
+  void SetUpstreamTypeInfo(const PropertyMap &props);
   void PerformWrapper(DRMOps code, drmModeAtomicReq *req, ...);
 
   int fd_ = -1;

@@ -71,6 +71,7 @@ class DRMCrtc {
  private:
   void ParseProperties();
   void ParseCapabilities(uint64_t blob_id);
+  void SetUpstreamCapabilities();
   void ParseCompRatio(std::string line, bool real_time);
   void SetROI(drmModeAtomicReq *req, uint32_t obj_id, uint32_t num_roi, DRMRect *crtc_rois,
               DRMRect *spr_rois);

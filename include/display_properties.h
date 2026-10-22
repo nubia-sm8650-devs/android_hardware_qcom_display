@@ -109,6 +109,7 @@
 #define DISABLE_SYSTEM_LOAD_CHECK            DISPLAY_PROP("disable_system_load_check")
 #define ASPECT_RATIO_THRESHOLD               DISPLAY_PROP("aspect_ratio_threshold")
 #define ENABLE_BRIGHTNESS_DRM_PROP           DISPLAY_PROP("enable_brightness_drm_prop")
+#define UPSTREAM_VIDEO_MODE_PANEL_PROP       DISPLAY_PROP("upstream_video_mode_panel")
 // Disable microidle condition
 #define DISABLE_SINGLE_LM_SPLIT_PROP         DISPLAY_PROP("disable_single_lm_split")
 // Enable posted start dynamic

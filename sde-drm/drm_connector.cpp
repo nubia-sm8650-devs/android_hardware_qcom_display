@@ -85,6 +85,8 @@
 #include "drm_utils.h"
 #include "drm_property.h"
 #include "drm_connector.h"
+#include "drm_master.h"
+#include "display_properties.h"
 
 namespace sde_drm {
 
@@ -1062,6 +1064,10 @@ int DRMConnector::GetInfo(DRMConnectorInfo *info) {
       ParseModeProperties(props->prop_values[index], info);
   }
 
+  if (drm_utils::kUpstreamMsm && !prop_mgr_.IsPropertyAvailable(DRMProperty::CAPABILITIES)) {
+    SetUpstreamInfo(info);
+  }
+
   if (prop_mgr_.IsPropertyAvailable(DRMProperty::EXT_HDR_PROPERTIES)) {
     index = std::distance(props->props,
                           std::find(props->props, props->props + props->count_props,
@@ -1100,6 +1106,32 @@ int DRMConnector::GetInfo(DRMConnectorInfo *info) {
   drmModeFreeObjectProperties(props);
 
   return 0;
+}
+
+void DRMConnector::SetUpstreamInfo(DRMConnectorInfo *info) {
+  bool dsi = (drm_connector_->connector_type == DRM_MODE_CONNECTOR_DSI);
+  int video_mode = 0;
+  if (dsi) {
+    display::DebugHandler::Get()->GetProperty(UPSTREAM_VIDEO_MODE_PANEL_PROP, &video_mode);
+  }
+
+  // HWCSession waits for a connector flagged as primary before it reports any display
+  info->is_primary = dsi && (drm_connector_->connector_type_id == 1);
+  info->panel_mode = (dsi && video_mode != 1) ? DRMPanelMode::COMMAND : DRMPanelMode::VIDEO;
+
+  DRMSubModeInfo sub_mode = {};
+  sub_mode.topology = DRMTopology::SINGLE_LM;
+  if (dsi) {
+    sub_mode.panel_mode_caps = (info->panel_mode == DRMPanelMode::VIDEO) ?
+                               DRM_MODE_FLAG_VID_MODE_PANEL : DRM_MODE_FLAG_CMD_MODE_PANEL;
+  }
+
+  for (auto &mode : info->modes) {
+    if (mode.sub_modes.empty()) {
+      mode.sub_modes.push_back(sub_mode);
+      mode.curr_submode_index = 0;
+    }
+  }
 }
 
 void DRMConnector::InitAndParse(drmModeConnector *conn) {

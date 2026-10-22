@@ -51,6 +51,7 @@
 
 #include "drm_utils.h"
 #include "drm_crtc.h"
+#include "drm_master.h"
 #include "drm_property.h"
 
 namespace sde_drm {
@@ -606,6 +607,14 @@ void DRMCrtc::ParseCapabilities(uint64_t blob_id) {
   delete[] fmt_str;
 }
 
+void DRMCrtc::SetUpstreamCapabilities() {
+  // DPU 10.0 (SM8650) catalog values, which the upstream driver does not expose
+  crtc_info_.max_blend_stages = 11;
+  crtc_info_.has_src_split = true;
+  crtc_info_.hw_version = (10u << 28);
+  DRM_LOGI("CRTC %u: using upstream msm capabilities", drm_crtc_->crtc_id);
+}
+
 void DRMCrtc::ParseCompRatio(string line, bool real_time) {
   CompRatioMap &comp_ratio_map =
     real_time ? crtc_info_.comp_ratio_rt_map : crtc_info_.comp_ratio_nrt_map;
@@ -663,6 +672,9 @@ void DRMCrtc::SetModeBlobID(uint64_t blob_id) {
 void DRMCrtc::InitAndParse(drmModeCrtc *crtc) {
   drm_crtc_ = crtc;
   ParseProperties();
+  if (!prop_mgr_.IsPropertyAvailable(DRMProperty::CAPABILITIES) && drm_utils::kUpstreamMsm) {
+    SetUpstreamCapabilities();
+  }
   pp_mgr_ = std::unique_ptr<DRMPPManager>(new DRMPPManager(fd_));
   pp_mgr_->Init(prop_mgr_, DRM_MODE_OBJECT_CRTC);
 }

@@ -104,6 +104,10 @@ using std::lock_guard;
 
 #define MAX_SCALER_LINEWIDTH 2560
 
+#ifndef DRM_FORMAT_MOD_QCOM_COMPRESSED
+#define DRM_FORMAT_MOD_QCOM_COMPRESSED fourcc_mod_code(QCOM, 1)
+#endif
+
 static struct sde_drm_csc_v1 csc_10bit_convert[kCscTypeMax] = {
   [kCscYuv2Rgb601L] = {
     {
@@ -706,12 +710,113 @@ DRMPlane::~DRMPlane() {
   drmModeFreePlane(drm_plane_);
 }
 
+static bool IsYuvFormat(uint32_t format) {
+  switch (format) {
+    case DRM_FORMAT_NV12:
+    case DRM_FORMAT_NV21:
+    case DRM_FORMAT_NV16:
+    case DRM_FORMAT_NV61:
+    case DRM_FORMAT_YUV420:
+    case DRM_FORMAT_YVU420:
+    case DRM_FORMAT_YUYV:
+    case DRM_FORMAT_YVYU:
+    case DRM_FORMAT_UYVY:
+    case DRM_FORMAT_VYUY:
+    case DRM_FORMAT_P010:
+      return true;
+    default:
+      return false;
+  }
+}
+
+static void ParseInFormats(int fd, uint64_t blob_id,
+                           vector<pair<uint32_t, uint64_t>> *formats_supported) {
+  drmModePropertyBlobRes *blob = drmModeGetPropertyBlob(fd, static_cast<uint32_t>(blob_id));
+  if (!blob) {
+    return;
+  }
+
+  const uint8_t *data = static_cast<const uint8_t *>(blob->data);
+  const drm_format_modifier_blob *header = static_cast<const drm_format_modifier_blob *>(blob->data);
+  if (!data || blob->length < sizeof(*header) ||
+      header->formats_offset + uint64_t(header->count_formats) * sizeof(uint32_t) > blob->length ||
+      header->modifiers_offset + uint64_t(header->count_modifiers) *
+      sizeof(drm_format_modifier) > blob->length) {
+    drmModeFreePropertyBlob(blob);
+    return;
+  }
+
+  const uint32_t *formats = reinterpret_cast<const uint32_t *>(data + header->formats_offset);
+  const drm_format_modifier *modifiers =
+      reinterpret_cast<const drm_format_modifier *>(data + header->modifiers_offset);
+  for (uint32_t i = 0; i < header->count_modifiers; i++) {
+    const drm_format_modifier &modifier = modifiers[i];
+    if (modifier.modifier != DRM_FORMAT_MOD_LINEAR &&
+        modifier.modifier != DRM_FORMAT_MOD_QCOM_COMPRESSED) {
+      continue;
+    }
+
+    for (uint32_t bit = 0; bit < 64; bit++) {
+      uint64_t index = uint64_t(modifier.offset) + bit;
+      if ((modifier.formats & (1ULL << bit)) && index < header->count_formats) {
+        formats_supported->push_back(std::make_pair(formats[index], modifier.modifier));
+      }
+    }
+  }
+
+  drmModeFreePropertyBlob(blob);
+}
+
+void DRMPlane::SetUpstreamTypeInfo(const PropertyMap &prop_map) {
+  DRMPlaneTypeInfo *info = &plane_type_info_;
+  // SDE limits of the SM8650 SSPPs. Scaling stays off since the upstream planes have no scaler
+  // property for SDM to program.
+  info->max_linewidth = (info->type == DRMPlaneType::CURSOR) ? 128 : 2560;
+  info->max_scaler_linewidth = info->max_linewidth;
+  info->max_upscale = 1;
+  info->max_downscale = 1;
+  info->qseed3_version = QSEEDStepVersion::V3;
+  info->has_excl_rect = false;
+
+  auto in_formats = prop_map.find(DRMProperty::IN_FORMATS);
+  if (in_formats != prop_map.end()) {
+    ParseInFormats(fd_, std::get<0>(in_formats->second), &info->formats_supported);
+  }
+
+  if (info->formats_supported.empty()) {
+    for (uint32_t i = 0; i < drm_plane_->count_formats; i++) {
+      info->formats_supported.push_back(std::make_pair(drm_plane_->formats[i], 0));
+    }
+  }
+
+  // Upstream planes carry no csc or scaler property, so tell VIG pipes apart by their YUV formats
+  if (info->type == DRMPlaneType::DMA) {
+    for (auto &format : info->formats_supported) {
+      if (IsYuvFormat(format.first)) {
+        info->type = DRMPlaneType::VIG;
+        break;
+      }
+    }
+  }
+
+  DRM_LOGI("Plane %u: using upstream msm capabilities, %zu formats", drm_plane_->plane_id,
+           info->formats_supported.size());
+}
+
 void DRMPlane::GetTypeInfo(const PropertyMap &prop_map) {
   uint64_t blob_id = 0;
   drmModePropertyRes *prop = nullptr;
   DRMPlaneTypeInfo *info = &plane_type_info_;
+  auto caps = prop_map.find(DRMProperty::CAPABILITIES);
+  if (caps == prop_map.end()) {
+    if (drm_utils::kUpstreamMsm) {
+      SetUpstreamTypeInfo(prop_map);
+    }
+    return;
+  }
+
   // Ideally we should check if this property type is a blob and then proceed.
-  std::tie(blob_id, prop) = prop_map.at(DRMProperty::CAPABILITIES);
+  std::tie(blob_id, prop) = caps->second;
   drmModePropertyBlobRes *blob = drmModeGetPropertyBlob(fd_, blob_id);
   if (!blob) {
     return;

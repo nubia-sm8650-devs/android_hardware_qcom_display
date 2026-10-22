@@ -108,6 +108,7 @@ class DRMConnector {
   void ParseCapabilities(uint64_t blob_id, drm_msm_ext_hdr_properties *hdr_info);
   void ParseCapabilities(uint64_t blob_id, std::vector<uint8_t> *edid);
   void ParseCapabilities(uint64_t blob_id, uint64_t *panel_id);
+  void SetUpstreamInfo(DRMConnectorInfo *info);
   void SetROI(drmModeAtomicReq *req, uint32_t obj_id, uint32_t num_roi,
               DRMRect *conn_rois);
 
