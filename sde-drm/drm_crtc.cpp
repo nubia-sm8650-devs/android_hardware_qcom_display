@@ -746,7 +746,7 @@ void DRMCrtc::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
 
     case DRMOps::CRTC_SET_ROT_PREFILL_BW: {
       uint64_t rot_bw = va_arg(args, uint64_t);
-      drmModeAtomicAddProperty(req, obj_id,
+      AtomicAddProperty(req, obj_id,
                                prop_mgr_.GetPropertyId(DRMProperty::ROT_PREFILL_BW), rot_bw);
     }; break;
 

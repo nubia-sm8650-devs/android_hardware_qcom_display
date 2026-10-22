@@ -34,6 +34,7 @@
 #include "libdrm_macros.h"
 #include "drm/drm_fourcc.h"
 #include "drm_dpps_mgr_imp.h"
+#include "drm_utils.h"
 
 #define __CLASS__ "DRMDppsManagerImp"
 namespace sde_drm {
@@ -357,7 +358,7 @@ void DRMDppsManagerImp::CommitDppsFeatures(drmModeAtomicReq *req, const DRMDispl
   if (!dpps_dirty_prop_.empty()) {
     for (auto it = dpps_dirty_prop_.begin(); it != dpps_dirty_prop_.end();) {
       if (it->obj_id == tok.crtc_id || it->obj_id == tok.conn_id) {
-        ret = drmModeAtomicAddProperty(req, it->obj_id, it->prop_id, it->value);
+        ret = AtomicAddProperty(req, it->obj_id, it->prop_id, it->value);
         if (ret < 0)
           DRM_LOGE("AtomicAddProperty failed obj_id 0x%x, prop_id %d ret %d ", it->obj_id,
                    it->prop_id, ret);

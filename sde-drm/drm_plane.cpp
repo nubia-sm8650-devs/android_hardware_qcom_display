@@ -1369,7 +1369,7 @@ void DRMPlane::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
     case DRMOps::PLANE_SET_ROT_FB_ID: {
       uint32_t fb_id = va_arg(args, uint32_t);
       prop_id = prop_mgr_.GetPropertyId(DRMProperty::ROT_FB_ID);
-      drmModeAtomicAddProperty(req, obj_id, prop_id, fb_id);
+      AtomicAddProperty(req, obj_id, prop_id, fb_id);
       DRM_LOGV("Plane %d: Setting rot_fb_id %d", obj_id, fb_id);
     } break;
 

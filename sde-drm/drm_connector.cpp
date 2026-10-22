@@ -1115,7 +1115,7 @@ void DRMConnector::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
   switch (code) {
     case DRMOps::CONNECTOR_SET_CRTC: {
       uint32_t crtc = va_arg(args, uint32_t);
-      drmModeAtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::CRTC_ID), crtc);
+      AtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::CRTC_ID), crtc);
       DRM_LOGD("Connector %d: Setting CRTC %d", obj_id, crtc);
     } break;
 
@@ -1123,7 +1123,7 @@ void DRMConnector::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
       int64_t *fence = va_arg(args, int64_t *);
       *fence = -1;
       uint32_t prop_id = prop_mgr_.GetPropertyId(DRMProperty::RETIRE_FENCE);
-      drmModeAtomicAddProperty(req, obj_id, prop_id, reinterpret_cast<uint64_t>(fence));
+      AtomicAddProperty(req, obj_id, prop_id, reinterpret_cast<uint64_t>(fence));
     } break;
 
     case DRMOps::CONNECTOR_SET_RETIRE_FENCE_OFFSET: {
@@ -1132,18 +1132,18 @@ void DRMConnector::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
       }
       uint32_t offset = va_arg(args, uint32_t);
       uint32_t prop_id = prop_mgr_.GetPropertyId(DRMProperty::RETIRE_FENCE_OFFSET);
-      drmModeAtomicAddProperty(req, obj_id, prop_id, offset);
+      AtomicAddProperty(req, obj_id, prop_id, offset);
     } break;
 
     case DRMOps::CONNECTOR_SET_OUTPUT_RECT: {
       DRMRect rect = va_arg(args, DRMRect);
-      drmModeAtomicAddProperty(req, obj_id,
+      AtomicAddProperty(req, obj_id,
                                prop_mgr_.GetPropertyId(DRMProperty::DST_X), rect.left);
-      drmModeAtomicAddProperty(req, obj_id,
+      AtomicAddProperty(req, obj_id,
                                prop_mgr_.GetPropertyId(DRMProperty::DST_Y), rect.top);
-      drmModeAtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::DST_W),
+      AtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::DST_W),
                                rect.right - rect.left);
-      drmModeAtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::DST_H),
+      AtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::DST_H),
                                rect.bottom - rect.top);
       DRM_LOGD("Connector %d: Setting dst [x,y,w,h][%d,%d,%d,%d]", obj_id, rect.left,
                   rect.top, (rect.right - rect.left), (rect.bottom - rect.top));
@@ -1151,7 +1151,7 @@ void DRMConnector::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
 
     case DRMOps::CONNECTOR_SET_OUTPUT_FB_ID: {
       uint32_t fb_id = va_arg(args, uint32_t);
-      drmModeAtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::FB_ID), fb_id);
+      AtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::FB_ID), fb_id);
       DRM_LOGD("Connector %d: Setting fb_id %d", obj_id, fb_id);
     } break;
 
@@ -1175,7 +1175,7 @@ void DRMConnector::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
           DRM_LOGE("Invalid power mode %d to set on connector %d", drm_power_mode, obj_id);
           break;
       }
-      drmModeAtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::LP), power_mode);
+      AtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::LP), power_mode);
       DRM_LOGD("Connector %d: Setting power_mode %d", obj_id, power_mode);
     } break;
 
@@ -1187,13 +1187,13 @@ void DRMConnector::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
 
     case DRMOps::CONNECTOR_SET_BRIGHTNESS: {
       uint32_t brightness_level = va_arg(args, uint32_t);
-      drmModeAtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::BRIGHTNESS),
+      AtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::BRIGHTNESS),
                                brightness_level);
     } break;
 
     case DRMOps::CONNECTOR_SET_AUTOREFRESH: {
       uint32_t enable = va_arg(args, uint32_t);
-      drmModeAtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::AUTOREFRESH),
+      AtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::AUTOREFRESH),
                                enable);
       DRM_LOGD("Connector %d: Setting autorefresh %d", obj_id, enable);
     } break;
@@ -1201,7 +1201,7 @@ void DRMConnector::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
     case DRMOps::CONNECTOR_SET_FB_SECURE_MODE: {
       int secure_mode = va_arg(args, int);
       uint32_t fb_secure_mode = (secure_mode == (int)DRMSecureMode::SECURE) ? SECURE : NON_SECURE;
-      drmModeAtomicAddProperty(req, obj_id,
+      AtomicAddProperty(req, obj_id,
                                prop_mgr_.GetPropertyId(DRMProperty::FB_TRANSLATION_MODE),
                                fb_secure_mode);
       DRM_LOGD("Connector %d: Setting FB secure mode %d", obj_id, fb_secure_mode);
@@ -1215,7 +1215,7 @@ void DRMConnector::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
 
     case DRMOps::CONNECTOR_SET_HDR_METADATA: {
       drm_msm_ext_hdr_metadata *hdr_metadata = va_arg(args, drm_msm_ext_hdr_metadata *);
-      drmModeAtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::HDR_METADATA),
+      AtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::HDR_METADATA),
                                reinterpret_cast<uint64_t>(hdr_metadata));
     } break;
 
@@ -1225,14 +1225,14 @@ void DRMConnector::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
       }
       int drm_qsync_mode = va_arg(args, int);
       uint32_t qsync_mode = static_cast<uint32_t>(drm_qsync_mode);
-      drmModeAtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::QSYNC_MODE),
+      AtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::QSYNC_MODE),
                                qsync_mode);
       DRM_LOGD("Connector %d: Setting Qsync mode %d", obj_id, qsync_mode);
     } break;
 
     case DRMOps::CONNECTOR_SET_TOPOLOGY_CONTROL: {
       uint32_t topology_control = va_arg(args, uint32_t);
-      drmModeAtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::TOPOLOGY_CONTROL),
+      AtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::TOPOLOGY_CONTROL),
                                topology_control);
     } break;
 
@@ -1260,7 +1260,7 @@ void DRMConnector::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
       }
       if (frame_trigger_mode >= 0) {
         uint32_t prop_id = prop_mgr_.GetPropertyId(DRMProperty::FRAME_TRIGGER);
-        int ret = drmModeAtomicAddProperty(req, obj_id, prop_id, frame_trigger_mode);
+        int ret = AtomicAddProperty(req, obj_id, prop_id, frame_trigger_mode);
         if (ret < 0) {
           DRM_LOGE("AtomicAddProperty failed obj_id 0x%x, prop_id %d mode %d ret %d",
                    obj_id, prop_id, frame_trigger_mode, ret);
@@ -1279,7 +1279,7 @@ void DRMConnector::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
       colorspace = GetColorspace(drm_colorspace);
       if (colorspace >= 0) {
         uint32_t prop_id = prop_mgr_.GetPropertyId(DRMProperty::COLORSPACE);
-        int ret = drmModeAtomicAddProperty(req, obj_id, prop_id, colorspace);
+        int ret = AtomicAddProperty(req, obj_id, prop_id, colorspace);
         if (ret < 0) {
           DRM_LOGE("AtomicAddProperty failed obj_id 0x%x, prop_id %d mode %d ret %d",
                    obj_id, prop_id, colorspace, ret);
@@ -1296,7 +1296,7 @@ void DRMConnector::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
         return;
       }
       uint32_t drm_panel_mode = va_arg(args, uint32_t);
-      drmModeAtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::PANEL_MODE),
+      AtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::PANEL_MODE),
                                drm_panel_mode);
       DRM_LOGD("Connector %d: Setting Panel mode 0x%x", obj_id, drm_panel_mode);
     } break;
@@ -1307,7 +1307,7 @@ void DRMConnector::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
       }
       uint32_t bpp_mode = va_arg(args, uint32_t);
       uint32_t prop_id = prop_mgr_.GetPropertyId(DRMProperty::BPP_MODE);
-      int ret = drmModeAtomicAddProperty(req, obj_id, prop_id, bpp_mode);
+      int ret = AtomicAddProperty(req, obj_id, prop_id, bpp_mode);
       if (ret < 0) {
         DRM_LOGE("AtomicAddProperty failed obj_id 0x%x, prop_id %d bpp_mode %d ret %d",
                  obj_id, prop_id, bpp_mode, ret);
@@ -1322,7 +1322,7 @@ void DRMConnector::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
       }
       uint64_t drm_bit_clk_rate = va_arg(args, uint64_t);
       uint32_t prop_id = prop_mgr_.GetPropertyId(DRMProperty::DYN_BIT_CLK);
-      int ret = drmModeAtomicAddProperty(req, obj_id, prop_id, drm_bit_clk_rate);
+      int ret = AtomicAddProperty(req, obj_id, prop_id, drm_bit_clk_rate);
       if (ret < 0) {
         DRM_LOGE("AtomicAddProperty failed obj_id 0x%x, prop_id %d, bit_clk_rate %" PRIu64
                  " ret %d", obj_id, prop_id, drm_bit_clk_rate, ret);
@@ -1337,7 +1337,7 @@ void DRMConnector::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
       }
       uint64_t drm_compression_mode = va_arg(args, uint32_t);
       uint32_t prop_id = prop_mgr_.GetPropertyId(DRMProperty::DSC_MODE);
-      int ret = drmModeAtomicAddProperty(req, obj_id, prop_id, drm_compression_mode);
+      int ret = AtomicAddProperty(req, obj_id, prop_id, drm_compression_mode);
       if (ret < 0) {
         DRM_LOGE("AtomicAddProperty failed obj_id 0x%x, prop_id %d, compression_mode %d ret %d",
                  obj_id, prop_id, drm_compression_mode, ret);
@@ -1352,7 +1352,7 @@ void DRMConnector::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
       }
       uint32_t drm_transfer_time = va_arg(args, uint32_t);
       uint32_t prop_id = prop_mgr_.GetPropertyId(DRMProperty::DYN_TRANSFER_TIME);
-      int ret = drmModeAtomicAddProperty(req, obj_id, prop_id, drm_transfer_time);
+      int ret = AtomicAddProperty(req, obj_id, prop_id, drm_transfer_time);
       if (ret < 0) {
         DRM_LOGE("AtomicAddProperty failed obj_id 0x%x, prop_id %d, transfer_time %" PRIu64
                  " ret %d",
@@ -1369,7 +1369,7 @@ void DRMConnector::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
       uint32_t *transfer_time = va_arg(args, uint32_t *);
       *transfer_time = 0;
       uint32_t prop_id = prop_mgr_.GetPropertyId(DRMProperty::TRANSFER_TIME);
-      drmModeAtomicAddProperty(req, obj_id, prop_id, reinterpret_cast<uint64_t>(transfer_time));
+      AtomicAddProperty(req, obj_id, prop_id, reinterpret_cast<uint64_t>(transfer_time));
     } break;
 
     case DRMOps::CONNECTOR_SET_JITTER_CONFIG: {
@@ -1381,7 +1381,7 @@ void DRMConnector::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
       jitter_cfg_.value = (uint32_t)((float)jitter_value * 100);
       jitter_cfg_.time = va_arg(args, uint32_t);
       uint32_t prop_id = prop_mgr_.GetPropertyId(DRMProperty::JITTER_CONFIG);
-      int ret = drmModeAtomicAddProperty(req, obj_id, prop_id,
+      int ret = AtomicAddProperty(req, obj_id, prop_id,
                                          reinterpret_cast<uint64_t>(&jitter_cfg_));
       if (ret < 0) {
         DRM_LOGE(
@@ -1402,7 +1402,7 @@ void DRMConnector::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
       }
       uint64_t cache_state = va_arg(args, uint32_t);
       uint32_t prop_id = prop_mgr_.GetPropertyId(DRMProperty::CACHE_STATE);
-      int ret = drmModeAtomicAddProperty(req, obj_id, prop_id, cache_state);
+      int ret = AtomicAddProperty(req, obj_id, prop_id, cache_state);
       if (ret < 0) {
         DRM_LOGE("AtomicAddProperty failed obj_id 0x%x, prop_id %d, cache_state %d ret %d",
                  obj_id, prop_id, cache_state, ret);
@@ -1417,7 +1417,7 @@ void DRMConnector::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
       }
       uint64_t early_fence_line = va_arg(args, uint32_t);
       uint32_t prop_id = prop_mgr_.GetPropertyId(DRMProperty::EARLY_FENCE_LINE);
-      int ret = drmModeAtomicAddProperty(req, obj_id, prop_id, early_fence_line);
+      int ret = AtomicAddProperty(req, obj_id, prop_id, early_fence_line);
       if (ret < 0) {
         DRM_LOGE("AtomicAddProperty failed obj_id 0x%x, prop_id %d, early_fence_line %d ret %d",
                  obj_id, prop_id, early_fence_line, ret);
@@ -1434,7 +1434,7 @@ void DRMConnector::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
 
       uint32_t prop_id = prop_mgr_.GetPropertyId(DRMProperty::DNSC_BLR);
       sde_drm_dnsc_blur_cfg *blur_cfg = va_arg(args, sde_drm_dnsc_blur_cfg *);
-      int ret = drmModeAtomicAddProperty(req, obj_id, prop_id,
+      int ret = AtomicAddProperty(req, obj_id, prop_id,
                                          reinterpret_cast<uint64_t>(blur_cfg));
       if (ret < 0) {
         DRM_LOGE("AtomicAddProperty failed obj_id 0x%x, prop_id %d, ret %d",
@@ -1451,7 +1451,7 @@ void DRMConnector::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
       }
       uint64_t wb_usage_mode = va_arg(args, uint32_t);
       uint32_t prop_id = prop_mgr_.GetPropertyId(DRMProperty::WB_USAGE_TYPE);
-      int ret = drmModeAtomicAddProperty(req, obj_id, prop_id, wb_usage_mode);
+      int ret = AtomicAddProperty(req, obj_id, prop_id, wb_usage_mode);
       if (ret < 0) {
         DRM_LOGE("AtomicAddProperty failed obj_id 0x%x, prop_id %d, wb_usage_mode %d ret %d",
                  obj_id, prop_id, wb_usage_mode, ret);
@@ -1466,7 +1466,7 @@ void DRMConnector::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
       if (cache_state == (int)DRMCacheWBState::ENABLED) {
         connector_cache_state = CACHE_STATE_ENABLED;
       }
-      drmModeAtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::CACHE_STATE),
+      AtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::CACHE_STATE),
                   connector_cache_state);
     } break;
 
@@ -1476,7 +1476,7 @@ void DRMConnector::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
       }
 
       uint64_t expected_present_time = va_arg(args, uint64_t);
-      drmModeAtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::EPT),
+      AtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::EPT),
                                expected_present_time);
       DRM_LOGD("Connector %d: Setting ePT = %" PRId64, obj_id, expected_present_time);
     } break;
@@ -1494,7 +1494,7 @@ void DRMConnector::SetROI(drmModeAtomicReq *req, uint32_t obj_id, uint32_t num_r
     return;
   }
   if (!num_roi || !conn_rois) {
-    drmModeAtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::ROI_V1), 0);
+    AtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::ROI_V1), 0);
     DRM_LOGD("Connector ROI is set to NULL to indicate full frame update");
     return;
   }
@@ -1510,7 +1510,7 @@ void DRMConnector::SetROI(drmModeAtomicReq *req, uint32_t obj_id, uint32_t num_r
     DRM_LOGD("Conn %d, ROI[l,t,b,r][%d %d %d %d]", obj_id,
              roi_v1_.roi[i].x1,roi_v1_.roi[i].y1,roi_v1_.roi[i].x2,roi_v1_.roi[i].y2);
   }
-  drmModeAtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::ROI_V1),
+  AtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::ROI_V1),
                            reinterpret_cast<uint64_t>(&roi_v1_));
 #endif
 }

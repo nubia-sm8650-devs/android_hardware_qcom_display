@@ -315,7 +315,7 @@ int DRMPPManager::SetPPRangeProperty(drmModeAtomicReq *req, uint32_t obj_id,
     return ret;
   }
   value = *((uint64_t *)feature.payload);
-  ret = drmModeAtomicAddProperty(req, obj_id, prop_info->prop_id, value);
+  ret = AtomicAddProperty(req, obj_id, prop_info->prop_id, value);
   if (ret < 0) {
     DRM_LOGE("failed to add property ret %d id %d value %llu", ret, prop_info->prop_id, value);
   } else {
@@ -334,7 +334,7 @@ int DRMPPManager::SetPPBlobProperty(drmModeAtomicReq *req, uint32_t obj_id,
 
   if (!feature.payload) {
     // feature disable case
-    drmModeAtomicAddProperty(req, obj_id, prop_info->prop_id, 0);
+    AtomicAddProperty(req, obj_id, prop_info->prop_id, 0);
     return 0;
   }
 
@@ -357,7 +357,7 @@ int DRMPPManager::SetPPBlobProperty(drmModeAtomicReq *req, uint32_t obj_id,
 
   prop_info->blob_id[prop_info->blob_id_index] = blob_id;
   prop_info->blob_id_index = (++prop_info->blob_id_index) % NUM_CACHED_BLOB_ID;
-  drmModeAtomicAddProperty(req, obj_id, prop_info->prop_id, blob_id);
+  AtomicAddProperty(req, obj_id, prop_info->prop_id, blob_id);
 
 #endif
   return ret;

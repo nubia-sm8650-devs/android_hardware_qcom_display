@@ -28,6 +28,7 @@
 */
 
 #include <drm_logger.h>
+#include <drm_master.h>
 
 #include <string.h>
 #include "drm_atomic_req.h"
@@ -93,6 +94,7 @@ void DRMManager::Destroy() {
 
 int DRMManager::Init(int drm_fd) {
   fd_ = drm_fd;
+  SkipMissingProperties(drm_utils::kUpstreamMsm);
 
   drmSetClientCap(fd_, DRM_CLIENT_CAP_UNIVERSAL_PLANES, 1);
   drmSetClientCap(fd_, DRM_CLIENT_CAP_ATOMIC, 1);

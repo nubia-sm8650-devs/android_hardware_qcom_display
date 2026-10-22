@@ -74,6 +74,7 @@
 #include <inttypes.h>
 
 #include "drm_panel_feature_mgr.h"
+#include "drm_utils.h"
 
 #define __CLASS__ "DRMPanelFeatureMgr"
 
@@ -592,7 +593,7 @@ void DRMPanelFeatureMgr::ApplyDirtyFeature(drmModeAtomicReq *req, const DRMDispl
     uint32_t blob_id = 0;
     if (!info.prop_ptr) {
       // Reset the feature.
-      ret = drmModeAtomicAddProperty(req, info.obj_id, prop_id, 0);
+      ret = AtomicAddProperty(req, info.obj_id, prop_id, 0);
       if (ret < 0) {
         DRM_LOGE("failed to add property ret:%d, obj_id:%d prop_id:%u value:%" PRIu64,
                   ret, info.obj_id, prop_id, value);
@@ -625,7 +626,7 @@ void DRMPanelFeatureMgr::ApplyDirtyFeature(drmModeAtomicReq *req, const DRMDispl
     DRM_LOGE("Unsupported property type id = %d size:%d", info.prop_id, info.prop_size);
   }
 
-  ret = drmModeAtomicAddProperty(req, info.obj_id, prop_id, value);
+  ret = AtomicAddProperty(req, info.obj_id, prop_id, value);
   if (ret < 0) {
     DRM_LOGE("failed to add property ret:%d, obj_id:%d prop_id:%x value:%" PRIu64,
               ret, info.obj_id, prop_id, value);

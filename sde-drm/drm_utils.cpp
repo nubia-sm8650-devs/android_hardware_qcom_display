@@ -108,13 +108,33 @@ void Tokenize(const std::string &str, std::vector<std::string> *tokens, char del
   }
 }
 
+static bool skip_missing_properties = false;
+
+void SkipMissingProperties(bool skip) {
+  skip_missing_properties = skip;
+}
+
+int AtomicAddProperty(drmModeAtomicReqPtr req, uint32_t object_id, uint32_t property_id,
+                      uint64_t value) {
+  // A property the driver does not expose has id 0, which fails the whole commit with ENOENT
+  if (!property_id && skip_missing_properties) {
+    return 0;
+  }
+
+  return drmModeAtomicAddProperty(req, object_id, property_id, value);
+}
+
 void AddProperty(drmModeAtomicReqPtr req, uint32_t object_id, uint32_t property_id, uint64_t value,
                  bool cache, std::unordered_map<uint32_t, uint64_t> &prop_val_map) {
+  if (!property_id && skip_missing_properties) {
+    return;
+  }
+
 #ifndef SDM_VIRTUAL_DRIVER
   auto it = prop_val_map.find(property_id);
   if (it == prop_val_map.end() || it->second != value)
 #endif
-    drmModeAtomicAddProperty(req, object_id, property_id, value);
+    AtomicAddProperty(req, object_id, property_id, value);
 #ifndef SDM_VIRTUAL_DRIVER
   if (cache)
     prop_val_map[property_id] = value;
