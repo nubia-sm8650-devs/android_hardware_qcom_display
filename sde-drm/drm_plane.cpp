@@ -1069,6 +1069,10 @@ void DRMPlane::ParseProperties() {
 
 void DRMPlane::InitAndParse(drmModePlane *plane) {
   drm_plane_ = plane;
+  // Track planes left enabled by the fbdev client, so that the first commit detaches them
+  if (drm_utils::kUpstreamMsm) {
+    assigned_crtc_id_ = drm_plane_->crtc_id;
+  }
   ParseProperties();
 
   unique_ptr<DRMPPManager> pp_mgr(new DRMPPManager(fd_));
