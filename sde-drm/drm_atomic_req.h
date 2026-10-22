@@ -50,10 +50,16 @@ class DRMAtomicReq : public DRMAtomicReqInterface {
   int Init(const DRMDisplayToken &tok);
 
  private:
+  void FinalizeOutFences(int commit_ret);
+
   drmModeAtomicReq *drm_atomic_req_ = {};
   DRMManager *drm_mgr_ = {};
   int fd_ = -1;
   DRMDisplayToken token_ = {};
+  int64_t *release_fence_ = nullptr;
+  int64_t *retire_fence_ = nullptr;
+  int last_out_fence_ = -1;
+  static const int kOutFenceWaitMs = 100;
 };
 
 }  // namespace sde_drm

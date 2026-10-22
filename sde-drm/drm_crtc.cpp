@@ -761,6 +761,9 @@ void DRMCrtc::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
       int64_t *fence = va_arg(args, int64_t *);
       *fence = -1;
       uint32_t prop_id = prop_mgr_.GetPropertyId(DRMProperty::OUTPUT_FENCE);
+      if (!prop_id) {
+        prop_id = prop_mgr_.GetPropertyId(DRMProperty::OUT_FENCE_PTR);
+      }
       AddProperty(req, obj_id, prop_id, reinterpret_cast<uint64_t>(fence), false /* cache */,
                   tmp_prop_val_map_);
     } break;

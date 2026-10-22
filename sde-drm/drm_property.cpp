@@ -244,6 +244,8 @@ DRMProperty DRMPropertyManager::GetPropertyEnum(const std::string &name) const {
   if (name == "SDE_SSPP_UCSC_ALPHA_DITHER_V1") { return DRMProperty::SDE_SSPP_UCSC_ALPHA_DITHER_V1; }
   if (name == "EPT") { return DRMProperty::EPT; }
   if (name == "brightness") { return DRMProperty::BRIGHTNESS; }
+  if (name == "IN_FENCE_FD") { return DRMProperty::IN_FENCE_FD; }
+  if (name == "OUT_FENCE_PTR") { return DRMProperty::OUT_FENCE_PTR; }
 
   return DRMProperty::INVALID;
 }

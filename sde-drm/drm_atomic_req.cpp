@@ -64,6 +64,10 @@
 */
 
 #include <drm_logger.h>
+#include <drm_master.h>
+#include <fcntl.h>
+#include <sync/sync.h>
+#include <unistd.h>
 
 #include "drm_atomic_req.h"
 #include "drm_connector.h"
@@ -83,6 +87,11 @@ DRMAtomicReq::~DRMAtomicReq() {
     drmModeAtomicFree(drm_atomic_req_);
     drm_atomic_req_ = nullptr;
   }
+
+  if (last_out_fence_ >= 0) {
+    close(last_out_fence_);
+    last_out_fence_ = -1;
+  }
 }
 
 int DRMAtomicReq::Init(const DRMDisplayToken &tok) {
@@ -98,6 +107,22 @@ int DRMAtomicReq::Init(const DRMDisplayToken &tok) {
 int DRMAtomicReq::Perform(DRMOps opcode, uint32_t obj_id, ...) {
   va_list args;
   va_start(args, obj_id);
+
+  // The upstream driver signals frame completion only through the CRTC OUT_FENCE_PTR, which
+  // serves as both the release and the retire fence
+  if (drm_utils::kUpstreamMsm && opcode == DRMOps::CONNECTOR_GET_RETIRE_FENCE && obj_id == token_.conn_id) {
+    retire_fence_ = va_arg(args, int64_t *);
+    *retire_fence_ = -1;
+    va_end(args);
+    return 0;
+  }
+  if (drm_utils::kUpstreamMsm && opcode == DRMOps::CRTC_GET_RELEASE_FENCE) {
+    va_list fence_args;
+    va_copy(fence_args, args);
+    release_fence_ = va_arg(fence_args, int64_t *);
+    va_end(fence_args);
+  }
+
   switch (opcode) {
     case DRMOps::PLANE_SET_SRC_RECT:
     case DRMOps::PLANE_SET_DST_RECT:
@@ -232,6 +257,8 @@ int DRMAtomicReq::Validate() {
   drm_mgr_->GetPlaneMgr()->PostValidate(token_.crtc_id, !ret);
   drm_mgr_->GetCrtcMgr()->PostValidate(token_.crtc_id, !ret);
   drmModeAtomicSetCursor(drm_atomic_req_, 0);
+  release_fence_ = nullptr;
+  retire_fence_ = nullptr;
 
   return ret;
 }
@@ -252,9 +279,30 @@ int DRMAtomicReq::Commit(bool synchronous, bool retain_planes) {
     flags |= DRM_MODE_ATOMIC_NONBLOCK;
   }
 
+  if (drm_utils::kUpstreamMsm && retire_fence_ && !release_fence_) {
+    Perform(DRMOps::CRTC_GET_RELEASE_FENCE, token_.crtc_id, retire_fence_);
+  }
+
+  // The upstream driver rejects a nonblocking commit with EBUSY until the previous one flips
+  if (drm_utils::kUpstreamMsm && !synchronous && last_out_fence_ >= 0) {
+    if (sync_wait(last_out_fence_, kOutFenceWaitMs)) {
+      DRM_LOGW("Waiting for the previous commit failed with error %d. crtc=%u", errno,
+               token_.crtc_id);
+    }
+  }
+
   int ret = drmModeAtomicCommit(fd_, drm_atomic_req_, flags, nullptr);
+  if (drm_utils::kUpstreamMsm && ret == -EBUSY && !synchronous) {
+    DRM_LOGW("Previous commit still pending, committing synchronously. crtc=%u", token_.crtc_id);
+    flags &= ~DRM_MODE_ATOMIC_NONBLOCK;
+    ret = drmModeAtomicCommit(fd_, drm_atomic_req_, flags, nullptr);
+  }
   if (ret) {
     DRM_LOGE("drmModeAtomicCommit failed with error %d (%s). crtc=%u", errno, strerror(errno), token_.crtc_id);
+  }
+
+  if (drm_utils::kUpstreamMsm) {
+    FinalizeOutFences(ret);
   }
 
   drm_mgr_->GetPlaneMgr()->PostCommit(token_.crtc_id, !ret);
@@ -262,6 +310,30 @@ int DRMAtomicReq::Commit(bool synchronous, bool retain_planes) {
   drmModeAtomicSetCursor(drm_atomic_req_, 0);
 
   return ret;
+}
+
+void DRMAtomicReq::FinalizeOutFences(int commit_ret) {
+  int release_fd = -1;
+  if (release_fence_) {
+    // OUT_FENCE_PTR points to an s32, so only the low half of the 64 bit slot is written
+    release_fd = static_cast<int32_t>(*release_fence_);
+    *release_fence_ = commit_ret ? -1 : release_fd;
+  }
+
+  bool has_fence = !commit_ret && release_fd >= 0;
+  if (retire_fence_ && retire_fence_ != release_fence_) {
+    *retire_fence_ = has_fence ? fcntl(release_fd, F_DUPFD_CLOEXEC, 0) : -1;
+  }
+
+  if (has_fence) {
+    if (last_out_fence_ >= 0) {
+      close(last_out_fence_);
+    }
+    last_out_fence_ = fcntl(release_fd, F_DUPFD_CLOEXEC, 0);
+  }
+
+  release_fence_ = nullptr;
+  retire_fence_ = nullptr;
 }
 
 }  // namespace sde_drm

@@ -1376,6 +1376,9 @@ void DRMPlane::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
     case DRMOps::PLANE_SET_INPUT_FENCE: {
       int fence = va_arg(args, int);
       prop_id = prop_mgr_.GetPropertyId(DRMProperty::INPUT_FENCE);
+      if (!prop_id) {
+        prop_id = prop_mgr_.GetPropertyId(DRMProperty::IN_FENCE_FD);
+      }
       AddProperty(req, obj_id, prop_id, fence, false /* cache */, tmp_prop_val_map_);
       DRM_LOGV("Plane %d: Setting input fence %d", obj_id, fence);
     } break;
