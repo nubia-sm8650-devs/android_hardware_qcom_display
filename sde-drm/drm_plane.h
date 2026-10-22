@@ -118,6 +118,7 @@ class DRMPlane {
   uint32_t requested_crtc_id_ = 0;
   DRMPropertyManager prop_mgr_ {};
   bool has_excl_rect_ = false;
+  uint64_t alpha_max_ = 0;
   drm_clip_rect excl_rect_copy_ = {};
   std::unique_ptr<DRMPPManager> pp_mgr_ {};
   std::unordered_map<uint32_t, uint64_t> tmp_prop_val_map_ {};

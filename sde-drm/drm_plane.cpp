@@ -73,6 +73,7 @@
 #include <drm/drm_fourcc.h>
 #include <display/drm/sde_drm.h>
 
+#include <cinttypes>
 #include <cstring>
 #include <map>
 #include <sstream>
@@ -84,6 +85,7 @@
 
 #include "drm_utils.h"
 #include "drm_plane.h"
+#include "drm_master.h"
 #include "drm_property.h"
 
 namespace sde_drm {
@@ -241,6 +243,11 @@ static uint8_t PREMULTIPLIED = 2;
 static uint8_t COVERAGE = 3;
 static uint8_t SKIP_BLENDING = 4;
 
+// Pixel blend modes of the core DRM "pixel blend mode" property
+static uint8_t PIXEL_BLEND_NONE = 2;
+static uint8_t PIXEL_BLEND_PREMULTI = 0;
+static uint8_t PIXEL_BLEND_COVERAGE = 1;
+
 // UCSC IGC modes
 static uint8_t UCSC_IGC_DISABLE = 0;
 static uint8_t UCSC_IGC_SRGB = 1;
@@ -365,6 +372,23 @@ static void PopulateBlendType(drmModePropertyRes *prop) {
       }
     }
     blend_type_populated = true;
+  }
+}
+
+static void PopulatePixelBlendModes(drmModePropertyRes *prop) {
+  static bool pixel_blend_modes_populated = false;
+  if (!pixel_blend_modes_populated) {
+    for (auto i = 0; i < prop->count_enums; i++) {
+      string enum_name(prop->enums[i].name);
+      if (enum_name == "None") {
+        PIXEL_BLEND_NONE = prop->enums[i].value;
+      } else if (enum_name == "Pre-multiplied") {
+        PIXEL_BLEND_PREMULTI = prop->enums[i].value;
+      } else if (enum_name == "Coverage") {
+        PIXEL_BLEND_COVERAGE = prop->enums[i].value;
+      }
+    }
+    pixel_blend_modes_populated = true;
   }
 }
 
@@ -839,6 +863,11 @@ void DRMPlane::ParseProperties() {
       plane_type_info_.multirect_prop_present = true;
     } else if (prop_enum == DRMProperty::BLEND_OP) {
       PopulateBlendType(info);
+    } else if (prop_enum == DRMProperty::PIXEL_BLEND_MODE) {
+      PopulatePixelBlendModes(info);
+    } else if (prop_enum == DRMProperty::ALPHA && drm_property_type_is(info, DRM_MODE_PROP_RANGE) &&
+               info->count_values > 1) {
+      alpha_max_ = info->values[1];
     } else if (prop_enum == DRMProperty::SDE_SSPP_UCSC_IGC_V1) {
       PopulateUcscIgcMode(info);
     } else if (prop_enum == DRMProperty::SDE_SSPP_UCSC_GC_V1) {
@@ -1272,6 +1301,12 @@ void DRMPlane::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
 
     case DRMOps::PLANE_SET_ZORDER: {
       uint32_t zpos = va_arg(args, uint32_t);
+#ifdef FOD_PRESSED_LAYER_ZORDER
+      // The FOD flag is an SDE extension that the upstream zpos range rejects
+      if (drm_utils::kUpstreamMsm) {
+        zpos &= ~FOD_PRESSED_LAYER_ZORDER;
+      }
+#endif
       prop_id = prop_mgr_.GetPropertyId(DRMProperty::ZPOS);
       AddProperty(req, obj_id, prop_id, zpos, true /* cache */, tmp_prop_val_map_);
       DRM_LOGD("Plane %d: Setting z %d", obj_id, zpos);
@@ -1297,10 +1332,14 @@ void DRMPlane::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
     } break;
 
     case DRMOps::PLANE_SET_ALPHA: {
-      uint32_t alpha = va_arg(args, uint32_t);
+      uint64_t alpha = va_arg(args, uint32_t);
+      // SDM alpha is 8 bit, the core DRM alpha property is 16 bit
+      if (alpha_max_ > 0xff) {
+        alpha = alpha * alpha_max_ / 0xff;
+      }
       prop_id = prop_mgr_.GetPropertyId(DRMProperty::ALPHA);
       AddProperty(req, obj_id, prop_id, alpha, true /* cache */, tmp_prop_val_map_);
-      DRM_LOGV("Plane %d: Setting alpha %d", obj_id, alpha);
+      DRM_LOGV("Plane %d: Setting alpha %" PRIu64, obj_id, alpha);
     } break;
 
     case DRMOps::PLANE_SET_BLEND_TYPE: {
@@ -1328,6 +1367,20 @@ void DRMPlane::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
       }
 
       prop_id = prop_mgr_.GetPropertyId(DRMProperty::BLEND_OP);
+      if (!prop_id) {
+        prop_id = prop_mgr_.GetPropertyId(DRMProperty::PIXEL_BLEND_MODE);
+        switch (blending) {
+          case DRMBlendType::OPAQUE:
+            blend_type = PIXEL_BLEND_NONE;
+            break;
+          case DRMBlendType::COVERAGE:
+            blend_type = PIXEL_BLEND_COVERAGE;
+            break;
+          default:
+            blend_type = PIXEL_BLEND_PREMULTI;
+            break;
+        }
+      }
       AddProperty(req, obj_id, prop_id, blend_type, true /* cache */, tmp_prop_val_map_);
       DRM_LOGV("Plane %d: Setting blending %d", obj_id, blend_type);
     } break;
