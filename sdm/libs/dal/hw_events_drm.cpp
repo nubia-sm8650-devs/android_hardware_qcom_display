@@ -114,12 +114,45 @@ namespace sdm {
 
 using drm_utils::DRMMaster;
 
+static int OpenDrmDevice() {
+  DRMMaster *master = nullptr;
+  if (DRMMaster::GetInstance(&master) < 0) {
+    return -ENODEV;
+  }
+
+  return master->OpenDevice();
+}
+
+// Events delivered through DRM_IOCTL_MSM_REGISTER_EVENT, which only the SDE driver implements
+static bool IsSdeDriverEvent(HWEvent event) {
+  switch (event) {
+    case HWEvent::IDLE_POWER_COLLAPSE:
+    case HWEvent::PANEL_DEAD:
+    case HWEvent::HW_RECOVERY:
+    case HWEvent::HISTOGRAM:
+    case HWEvent::MMRM:
+    case HWEvent::POWER_EVENT:
+    case HWEvent::VM_RELEASE_EVENT:
+      return true;
+    default:
+      return false;
+  }
+}
+
 DisplayError HWEventsDRM::InitializePollFd() {
+  DisplayError error = kErrorNone;
+  for (auto &poll_fd : poll_fds_) {
+    poll_fd = {};
+    poll_fd.fd = -1;
+  }
+
   for (uint32_t i = 0; i < event_data_list_.size(); i++) {
     char data[kMaxStringLength]{};
     HWEventData &event_data = event_data_list_[i];
-    poll_fds_[i] = {};
-    poll_fds_[i].fd = -1;
+
+    if (drm_utils::kUpstreamMsm && IsSdeDriverEvent(event_data.event_type)) {
+      continue;
+    }
 
     switch (event_data.event_type) {
       case HWEvent::VSYNC: {
@@ -129,11 +162,12 @@ DisplayError HWEventsDRM::InitializePollFd() {
           int ret = DRMMaster::GetInstance(&master);
           if (ret < 0) {
             DLOGE("Failed to acquire DRMMaster instance");
-            return kErrorNotSupported;
+            error = kErrorNotSupported;
+            continue;
           }
           master->GetHandle(&poll_fds_[i].fd);
         } else {
-          poll_fds_[i].fd = drmOpen("msm_drm", nullptr);
+          poll_fds_[i].fd = OpenDrmDevice();
         }
         vsync_index_ = i;
       } break;
@@ -146,37 +180,41 @@ DisplayError HWEventsDRM::InitializePollFd() {
         Sys::pread_(poll_fds_[i].fd, data, kMaxStringLength, 0);
       } break;
       case HWEvent::IDLE_POWER_COLLAPSE: {
-        poll_fds_[i].fd = drmOpen("msm_drm", nullptr);
+        poll_fds_[i].fd = OpenDrmDevice();
         if (poll_fds_[i].fd < 0) {
           DLOGE("drmOpen failed with error %d", poll_fds_[i].fd);
-          return kErrorResources;
+          error = kErrorResources;
+          continue;
         }
         poll_fds_[i].events = POLLIN | POLLPRI | POLLERR;
         idle_pc_index_ = i;
       } break;
       case HWEvent::PANEL_DEAD: {
-        poll_fds_[i].fd = drmOpen("msm_drm", nullptr);
+        poll_fds_[i].fd = OpenDrmDevice();
         if (poll_fds_[i].fd < 0) {
           DLOGE("drmOpen failed with error %d", poll_fds_[i].fd);
-          return kErrorResources;
+          error = kErrorResources;
+          continue;
         }
         poll_fds_[i].events = POLLIN | POLLPRI | POLLERR;
         panel_dead_index_ = i;
       } break;
       case HWEvent::HW_RECOVERY: {
-        poll_fds_[i].fd = drmOpen("msm_drm", nullptr);
+        poll_fds_[i].fd = OpenDrmDevice();
         if (poll_fds_[i].fd < 0) {
           DLOGE("drmOpen failed with error %d", poll_fds_[i].fd);
-          return kErrorResources;
+          error = kErrorResources;
+          continue;
         }
         poll_fds_[i].events = POLLIN | POLLPRI | POLLERR;
         hw_recovery_index_ = i;
       } break;
       case HWEvent::HISTOGRAM: {
-        poll_fds_[i].fd = drmOpen("msm_drm", nullptr);
+        poll_fds_[i].fd = OpenDrmDevice();
         if (poll_fds_[i].fd < 0) {
           DLOGE("drmOpen failed with error %d", poll_fds_[i].fd);
-          return kErrorResources;
+          error = kErrorResources;
+          continue;
         }
         poll_fds_[i].events = POLLIN | POLLPRI | POLLERR;
         histogram_index_ = i;
@@ -186,7 +224,8 @@ DisplayError HWEventsDRM::InitializePollFd() {
         int inotify_fd = Sys::inotify_init_();
         if (inotify_fd < 0) {
           DLOGE("inotify init failed");
-          return kErrorResources;
+          error = kErrorResources;
+          continue;
         }
         poll_fds_[i].fd = inotify_fd;
         poll_fds_[i].events = POLLIN;
@@ -194,28 +233,31 @@ DisplayError HWEventsDRM::InitializePollFd() {
         DLOGI("%s backlight_event_index_ %d", brightness_node_.c_str(), backlight_event_index_);
       } break;
       case HWEvent::MMRM: {
-        poll_fds_[i].fd = drmOpen("msm_drm", nullptr);
+        poll_fds_[i].fd = OpenDrmDevice();
         if (poll_fds_[i].fd < 0) {
           DLOGE("drmOpen failed with error %d", poll_fds_[i].fd);
-          return kErrorResources;
+          error = kErrorResources;
+          continue;
         }
         poll_fds_[i].events = POLLIN | POLLPRI | POLLERR;
         mmrm_index_ = i;
       } break;
       case HWEvent::POWER_EVENT: {
-        poll_fds_[i].fd = drmOpen("msm_drm", nullptr);
+        poll_fds_[i].fd = OpenDrmDevice();
         if (poll_fds_[i].fd < 0) {
           DLOGE("drmOpen failed with error %d", poll_fds_[i].fd);
-          return kErrorResources;
+          error = kErrorResources;
+          continue;
         }
         poll_fds_[i].events = POLLIN | POLLPRI | POLLERR;
         power_event_index_ = i;
       } break;
       case HWEvent::VM_RELEASE_EVENT: {
-        poll_fds_[i].fd = drmOpen("msm_drm", nullptr);
+        poll_fds_[i].fd = OpenDrmDevice();
         if (poll_fds_[i].fd < 0) {
           DLOGE("drmOpen failed with error %d", poll_fds_[i].fd);
-          return kErrorResources;
+          error = kErrorResources;
+          continue;
         }
         poll_fds_[i].events = POLLIN | POLLPRI | POLLERR;
         vm_release_event_index_ = i;
@@ -225,7 +267,7 @@ DisplayError HWEventsDRM::InitializePollFd() {
     }
   }
 
-  return kErrorNone;
+  return error;
 }
 
 DisplayError HWEventsDRM::SetEventParser() {
@@ -456,6 +498,10 @@ void HWEventsDRM::WakeUpEventThread() {
 
 void HWEventsDRM::CloseFds() {
   for (uint32_t i = 0; i < event_data_list_.size(); i++) {
+    if (poll_fds_[i].fd < 0) {
+      continue;
+    }
+
     switch (event_data_list_[i].event_type) {
       case HWEvent::VSYNC:
         if (!is_primary_) {
