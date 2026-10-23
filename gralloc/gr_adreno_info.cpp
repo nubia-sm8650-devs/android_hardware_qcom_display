@@ -37,7 +37,6 @@
 #include <cutils/properties.h>
 #include <dlfcn.h>
 #include <mutex>
-#include <fstream>
 
 #include "gr_adreno_info.h"
 #include "gr_utils.h"
@@ -46,12 +45,10 @@
 
 using std::lock_guard;
 using std::mutex;
-using std::fstream;
 
 namespace gralloc {
 
 AdrenoMemInfo *AdrenoMemInfo::s_instance = nullptr;
-char kgsl_path[] = "/dev/kgsl-3d0";
 
 AdrenoMemInfo *AdrenoMemInfo::GetInstance() {
   static mutex s_lock;
@@ -69,11 +66,6 @@ AdrenoMemInfo::AdrenoMemInfo() {
   if (!(strncmp(property, "1", PROPERTY_VALUE_MAX)) ||
       !(strncmp(property, "true", PROPERTY_VALUE_MAX))) {
     gfx_ubwc_disable_ = true;
-  }
-
-  fstream fs(kgsl_path, fstream::in);
-  if (!fs.is_open()) {
-    return;
   }
 
   libadreno_utils_ = ::dlopen("libadreno_utils.so", RTLD_NOW);
