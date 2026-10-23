@@ -110,6 +110,9 @@ DisplayError Strategy::Start(DispLayerStack *disp_layer_stack, uint32_t *max_att
       *max_attempts = 1;
       error = kErrorNeedsValidate;
     }
+  } else {
+    *max_attempts = 1;
+    error = kErrorNeedsValidate;
   }
 
   disp_layer_stack_->stack->flags.default_strategy = !extn_start_success_;
