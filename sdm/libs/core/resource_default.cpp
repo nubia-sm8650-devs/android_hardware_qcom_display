@@ -422,6 +422,10 @@ DisplayError ResourceDefault::PostCommit(Handle display_ctx, DispLayerStack *dis
 
   display_resource_ctx->frame_count++;
 
+  if (disp_layer_stack->stack) {
+    disp_layer_stack->stack->retire_fence = disp_layer_stack->info.retire_fence;
+  }
+
   return kErrorNone;
 }
 
