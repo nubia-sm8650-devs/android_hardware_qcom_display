@@ -11,6 +11,7 @@
 #include <utils/rect.h>
 
 #include <algorithm>
+#include <bitset>
 #include <tuple>
 #include <utility>
 
@@ -74,6 +75,8 @@ DisplayError StrategyImpl::Start(DispLayerStack* disp_layer_stack, uint32_t* max
     attempts_.clear();
     next_attempt_ = 0;
 
+    bool skip_validate = CanSkipValidate(*constraints);
+
     const HWLayersInfo& info = disp_layer_stack->info;
     bool gpu_target = info.gpu_target_index >= 0 && !gpu_disabled_;
 
@@ -92,7 +95,41 @@ DisplayError StrategyImpl::Start(DispLayerStack* disp_layer_stack, uint32_t* max
 
     *max_attempts = UINT32(attempts_.size());
 
-    return kErrorNeedsValidate;
+    return skip_validate ? kErrorNone : kErrorNeedsValidate;
+}
+
+bool StrategyImpl::CanSkipValidate(const StrategyConstraints& constraints) const {
+    const LayerStack& stack = *disp_layer_stack_->stack;
+    const HWLayersInfo& info = disp_layer_stack_->info;
+
+    if (force_validate_ || !full_sde_validated_ || constraints.gpu_fallback_mode ||
+        constraints.idle_timeout || constraints.safe_mode) {
+        return false;
+    }
+
+    if (stack.needs_validate || stack.solid_fill_enabled || stack.tonemapper_active ||
+        stack.flags.geometry_changed || stack.flags.single_buffered_layer_present) {
+        return false;
+    }
+
+    if (info.app_layer_count != validated_layer_count_ ||
+        info.hw_layers.size() != validated_layer_count_) {
+        return false;
+    }
+
+    for (uint32_t i = 0; i < info.app_layer_count; i++) {
+        const Layer& layer = *stack.layers.at(i);
+        std::bitset<kLayerUpdateMax> updates = layer.update_mask;
+
+        // Damage only matters to partial update and to the GPU batch choice
+        updates.reset(kSurfaceDamage);
+        updates.reset(kSurfaceInvalidate);
+        if (layer.geometry_changes || updates.any() || layer.composition != kCompositionSDE) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 void StrategyImpl::AddSdeAttempts(uint32_t max_layers, bool gpu_target) {
@@ -260,6 +297,10 @@ DisplayError StrategyImpl::GetNextStrategy() {
     HWLayersInfo& info = disp_layer_stack_->info;
     std::vector<Layer*>& layers = disp_layer_stack_->stack->layers;
 
+    force_validate_ = false;
+    full_sde_validated_ = attempt.gpu_start == attempt.gpu_end;
+    validated_layer_count_ = info.app_layer_count;
+
     info.index.clear();
     info.roi_index.clear();
     info.hw_layers.clear();
@@ -331,6 +372,7 @@ DisplayError StrategyImpl::Reconfigure(const HWPanelInfo& hw_panel_info,
                                        const HWDisplayAttributes& display_attributes,
                                        const HWMixerAttributes& mixer_attributes,
                                        const DisplayConfigVariableInfo& fb_config) {
+    force_validate_ = true;
     hw_panel_info_ = hw_panel_info;
     hw_res_info_ = hw_res_info;
     display_attributes_ = display_attributes;
@@ -342,6 +384,7 @@ DisplayError StrategyImpl::Reconfigure(const HWPanelInfo& hw_panel_info,
 }
 
 DisplayError StrategyImpl::SetCompositionState(LayerComposition composition_type, bool enable) {
+    force_validate_ = true;
     DLOGI("Composition type %d %s on display %d", composition_type,
           enable ? "enabled" : "disabled", display_id_);
 
@@ -355,6 +398,7 @@ DisplayError StrategyImpl::SetCompositionState(LayerComposition composition_type
 }
 
 DisplayError StrategyImpl::Purge() {
+    force_validate_ = true;
     return kErrorNone;
 }
 
@@ -367,6 +411,7 @@ DisplayError StrategyImpl::SetColorModesInfo(const std::vector<PrimariesTransfer
 }
 
 DisplayError StrategyImpl::SetBlendSpace(const PrimariesTransfer& blend_space) {
+    force_validate_ = true;
     blend_space_ = blend_space;
     return kErrorNone;
 }

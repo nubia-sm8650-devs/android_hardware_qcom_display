@@ -49,6 +49,7 @@ class StrategyImpl : public StrategyInterface {
     };
 
     void UpdatePlaneCaps();
+    bool CanSkipValidate(const StrategyConstraints& constraints) const;
     void AddSdeAttempts(uint32_t max_layers, bool gpu_target);
     bool IsSdeCapable(const Layer& layer) const;
     bool IsColorSupported(const LayerBuffer& buffer) const;
@@ -72,6 +73,9 @@ class StrategyImpl : public StrategyInterface {
     bool sde_disabled_ = false;
     std::vector<Attempt> attempts_;
     size_t next_attempt_ = 0;
+    bool force_validate_ = true;
+    bool full_sde_validated_ = false;
+    uint32_t validated_layer_count_ = 0;
 };
 
 }  // namespace sdm
