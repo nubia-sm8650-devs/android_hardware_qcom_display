@@ -42,7 +42,7 @@ class StrategyImpl : public StrategyInterface {
     };
 
     void UpdatePlaneCaps();
-    void AddSdeAttempts(uint32_t max_layers);
+    void AddSdeAttempts(uint32_t max_layers, bool gpu_target);
     bool IsSdeCapable(const Layer& layer) const;
     bool IsColorSupported(const LayerBuffer& buffer) const;
     bool IsGeometrySupported(const Layer& layer) const;

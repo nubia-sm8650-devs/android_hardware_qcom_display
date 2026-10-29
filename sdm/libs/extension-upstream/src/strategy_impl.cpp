@@ -11,6 +11,7 @@
 #include <utils/rect.h>
 
 #include <algorithm>
+#include <utility>
 
 #include "plane_limits.h"
 
@@ -19,6 +20,8 @@
 namespace sdm {
 
 namespace {
+
+constexpr size_t kMaxMixedAttempts = 2;
 
 bool IsSdrPrimaries(ColorPrimaries primaries) {
     return primaries == ColorPrimaries_BT709_5 || primaries == ColorPrimaries_BT601_6_625 ||
@@ -70,11 +73,13 @@ DisplayError StrategyImpl::Start(DispLayerStack* disp_layer_stack, uint32_t* max
     next_attempt_ = 0;
 
     const HWLayersInfo& info = disp_layer_stack->info;
+    bool gpu_target = info.gpu_target_index >= 0 && !gpu_disabled_;
+
     if (!sde_disabled_ && !constraints->gpu_fallback_mode && !constraints->idle_timeout) {
-        AddSdeAttempts(constraints->max_layers);
+        AddSdeAttempts(constraints->max_layers, gpu_target);
     }
 
-    if (info.gpu_target_index >= 0 && !gpu_disabled_) {
+    if (gpu_target) {
         attempts_.push_back({0, info.app_layer_count});
     }
 
@@ -88,19 +93,54 @@ DisplayError StrategyImpl::Start(DispLayerStack* disp_layer_stack, uint32_t* max
     return kErrorNeedsValidate;
 }
 
-void StrategyImpl::AddSdeAttempts(uint32_t max_layers) {
+void StrategyImpl::AddSdeAttempts(uint32_t max_layers, bool gpu_target) {
     const std::vector<Layer*>& layers = disp_layer_stack_->stack->layers;
     uint32_t count = disp_layer_stack_->info.app_layer_count;
     uint32_t budget = std::min({max_layers, plane_count_, UINT32(kMaxSDELayers)});
+    uint32_t first_gpu = count;
+    uint32_t last_gpu = 0;
 
     for (uint32_t i = 0; i < count; i++) {
         if (!IsSdeCapable(*layers.at(i))) {
-            return;
+            first_gpu = std::min(first_gpu, i);
+            last_gpu = i;
         }
     }
 
-    if (count <= budget) {
+    bool needs_gpu = first_gpu < count;
+    if (!needs_gpu && count <= budget) {
         attempts_.push_back({0, 0});
+        return;
+    }
+
+    if (!gpu_target || budget < 2) {
+        return;
+    }
+
+    uint32_t batch = count >= budget ? count + 1 - budget : 1;
+    if (needs_gpu) {
+        batch = std::max(batch, last_gpu - first_gpu + 1);
+    }
+
+    if (batch >= count) {
+        return;
+    }
+
+    uint32_t lowest = needs_gpu && last_gpu + 1 > batch ? last_gpu + 1 - batch : 0;
+    uint32_t highest = needs_gpu ? std::min(first_gpu, count - batch) : count - batch;
+    std::vector<std::pair<uint32_t, uint32_t>> starts;
+
+    for (uint32_t start = lowest; start <= highest; start++) {
+        uint32_t updating = 0;
+        for (uint32_t i = start; i < start + batch; i++) {
+            updating += layers.at(i)->flags.updating;
+        }
+        starts.push_back({updating, start});
+    }
+
+    std::sort(starts.begin(), starts.end());
+    for (size_t i = 0; i < std::min(starts.size(), kMaxMixedAttempts); i++) {
+        attempts_.push_back({starts[i].second, starts[i].second + batch});
     }
 }
 
