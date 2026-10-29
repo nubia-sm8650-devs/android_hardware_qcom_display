@@ -700,9 +700,9 @@ HWC3::Error HWCLayer::SetLayerVisibleRegion(Region visible) {
 HWC3::Error HWCLayer::SetLayerZOrder(uint32_t z) {
 #ifdef UDFPS_ZPOS
   bool fod_pressed = z & FOD_PRESSED_LAYER_ZORDER;
+  z &= ~FOD_PRESSED_LAYER_ZORDER;
   if (fod_pressed_ != fod_pressed) {
     fod_pressed_ = fod_pressed;
-    z &= ~FOD_PRESSED_LAYER_ZORDER;
     geometry_changes_ |= kZOrder;
   }
 #endif
