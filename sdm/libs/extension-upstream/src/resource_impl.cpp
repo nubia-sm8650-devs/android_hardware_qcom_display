@@ -250,8 +250,22 @@ DisplayError ResourceImpl::PostCommit(Handle display_ctx, DispLayerStack* disp_l
 
     ctx->committed_planes = ctx->prepared_planes;
 
-    if (disp_layer_stack->stack) {
-        disp_layer_stack->stack->retire_fence = disp_layer_stack->info.retire_fence;
+    LayerStack* stack = disp_layer_stack->stack;
+    const HWLayersInfo& info = disp_layer_stack->info;
+    if (!stack) {
+        return kErrorNone;
+    }
+
+    stack->retire_fence = info.retire_fence;
+
+    // A layer that left the planes with this commit stays in use until the commit is on screen
+    std::shared_ptr<Fence> release_fence;
+    if (!info.hw_layers.empty()) {
+        release_fence = info.hw_layers.front().input_buffer.release_fence;
+    }
+
+    for (Layer* layer : stack->layers) {
+        layer->input_buffer.release_fence = release_fence;
     }
 
     return kErrorNone;
