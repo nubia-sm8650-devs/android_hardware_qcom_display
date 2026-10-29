@@ -248,6 +248,7 @@ DRMProperty DRMPropertyManager::GetPropertyEnum(const std::string &name) const {
   if (name == "OUT_FENCE_PTR") { return DRMProperty::OUT_FENCE_PTR; }
   if (name == "pixel blend mode") { return DRMProperty::PIXEL_BLEND_MODE; }
   if (name == "IN_FORMATS") { return DRMProperty::IN_FORMATS; }
+  if (name == "CTM") { return DRMProperty::CTM; }
 
   return DRMProperty::INVALID;
 }

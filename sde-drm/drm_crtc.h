@@ -79,10 +79,14 @@ class DRMCrtc {
                           const std::vector<DRMSolidfillStage> *solid_fills);
   void SetNoiseLayerConfig(drmModeAtomicReq *req, uint32_t obj_id,
                            const DRMNoiseLayerConfig *noise_cfg);
+  void SetCtm(drmModeAtomicReq *req, uint32_t obj_id, const drm_color_ctm *ctm);
+  void EvictCtmBlob(uint32_t prop_id);
+  void DestroyCtmBlobs();
   void ClearVotesCache();
 
   // Currently hardcoded to 10. In future we need to query bit depth from driver.
   static const int kSolidFillHwBitDepth = 10;
+  static const size_t kMaxCtmBlobs = 3;
 
   int fd_ = -1;
   uint32_t crtc_index_ = {};
@@ -105,6 +109,7 @@ class DRMCrtc {
 #endif
   sde_drm_dest_scaler_data dest_scale_data_ = {};
   drm_msm_noise_layer_cfg drm_noise_layer_v1_ = {};
+  std::vector<std::pair<drm_color_ctm, uint32_t>> ctm_blobs_ = {};
 };
 
 class DRMCrtcManager {

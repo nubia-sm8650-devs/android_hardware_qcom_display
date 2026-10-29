@@ -626,6 +626,12 @@ enum struct DRMOps {
    *      uint32_t - Brightness Level
    */
   CONNECTOR_SET_BRIGHTNESS,
+  /*
+   * Op: Sets the color transform matrix applied after blending
+   * Arg: uint32_t - CRTC ID
+   *      const drm_color_ctm * - Matrix, or nullptr to bypass the transform
+   */
+  CRTC_SET_CTM,
 };
 
 enum struct DRMRotation {

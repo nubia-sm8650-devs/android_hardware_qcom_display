@@ -656,6 +656,8 @@ void DRMCrtc::Unlock() {
     mode_blob_id_ = 0;
   }
 
+  DestroyCtmBlobs();
+
   tmp_prop_val_map_.clear();
   committed_prop_val_map_.clear();
   status_ = DRMStatus::FREE;
@@ -802,6 +804,11 @@ void DRMCrtc::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
       DRMRect *crtc_rois = va_arg(args, DRMRect *);
       DRMRect *spr_rois = va_arg(args, DRMRect *);
       SetROI(req, obj_id, num_roi, crtc_rois, spr_rois);
+    } break;
+
+    case DRMOps::CRTC_SET_CTM: {
+      const drm_color_ctm *ctm = va_arg(args, const drm_color_ctm *);
+      SetCtm(req, obj_id, ctm);
     } break;
 
     case DRMOps::CRTC_SET_SECURITY_LEVEL: {
@@ -1036,6 +1043,65 @@ bool DRMCrtc::ConfigureScalerLUT(drmModeAtomicReq *req, uint32_t dir_lut_blob_id
   }
   is_lut_validation_in_progress_ = true;
   return true;
+}
+
+void DRMCrtc::SetCtm(drmModeAtomicReq *req, uint32_t obj_id, const drm_color_ctm *ctm) {
+  uint32_t prop_id = prop_mgr_.GetPropertyId(DRMProperty::CTM);
+  uint32_t blob_id = 0;
+
+  if (!prop_id) {
+    return;
+  }
+
+  if (ctm) {
+    auto it = std::find_if(ctm_blobs_.begin(), ctm_blobs_.end(), [ctm](const auto &blob) {
+      return !memcmp(&blob.first, ctm, sizeof(*ctm));
+    });
+
+    if (it != ctm_blobs_.end()) {
+      blob_id = it->second;
+    } else {
+      if (ctm_blobs_.size() >= kMaxCtmBlobs) {
+        EvictCtmBlob(prop_id);
+      }
+
+      if (drmModeCreatePropertyBlob(fd_, ctm, sizeof(*ctm), &blob_id)) {
+        DRM_LOGE("drmModeCreatePropertyBlob failed for CRTC_SET_CTM, crtc %d", obj_id);
+        return;
+      }
+
+      ctm_blobs_.push_back(std::make_pair(*ctm, blob_id));
+    }
+  }
+
+  AddProperty(req, obj_id, prop_id, blob_id, true /* cache */, tmp_prop_val_map_);
+}
+
+void DRMCrtc::EvictCtmBlob(uint32_t prop_id) {
+  // The kernel may hand a freed blob id out again, so keep the ids the property caches hold
+  auto in_use = [this, prop_id](uint32_t blob_id) {
+    auto tmp = tmp_prop_val_map_.find(prop_id);
+    auto committed = committed_prop_val_map_.find(prop_id);
+    return (tmp != tmp_prop_val_map_.end() && tmp->second == blob_id) ||
+           (committed != committed_prop_val_map_.end() && committed->second == blob_id);
+  };
+
+  auto it = std::find_if(ctm_blobs_.begin(), ctm_blobs_.end(),
+                         [&in_use](const auto &blob) { return !in_use(blob.second); });
+  if (it == ctm_blobs_.end()) {
+    return;
+  }
+
+  drmModeDestroyPropertyBlob(fd_, it->second);
+  ctm_blobs_.erase(it);
+}
+
+void DRMCrtc::DestroyCtmBlobs() {
+  for (auto &blob : ctm_blobs_) {
+    drmModeDestroyPropertyBlob(fd_, blob.second);
+  }
+
+  ctm_blobs_.clear();
 }
 
 void DRMCrtc::PostCommit(bool success) {

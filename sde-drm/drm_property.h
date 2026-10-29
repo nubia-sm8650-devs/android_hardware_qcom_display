@@ -246,6 +246,7 @@ enum struct DRMProperty {
   OUT_FENCE_PTR,
   PIXEL_BLEND_MODE,
   IN_FORMATS,
+  CTM,
 
   // Insert above
   MAX
