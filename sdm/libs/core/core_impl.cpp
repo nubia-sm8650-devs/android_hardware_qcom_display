@@ -84,10 +84,7 @@ DisplayError CoreImpl::Init() {
   upstream_driver = !enable_null_display_ && drm_utils::kUpstreamMsm;
 #endif
 
-  // The extension drives SDE specific resources and features that upstream msm does not have
-  if (upstream_driver) {
-    DLOGI("Upstream msm driver in use, not loading %s", EXTENSION_LIBRARY_NAME);
-  } else if (extension_lib_.Open(EXTENSION_LIBRARY_NAME)) {
+  if (extension_lib_.Open(EXTENSION_LIBRARY_NAME)) {
     if (!extension_lib_.Sym(CREATE_EXTENSION_INTERFACE_NAME,
                             reinterpret_cast<void **>(&create_extension_intf_)) ||
         !extension_lib_.Sym(DESTROY_EXTENSION_INTERFACE_NAME,
