@@ -247,6 +247,8 @@ enum struct DRMProperty {
   PIXEL_BLEND_MODE,
   IN_FORMATS,
   CTM,
+  COLOR_ENCODING,
+  COLOR_RANGE,
 
   // Insert above
   MAX

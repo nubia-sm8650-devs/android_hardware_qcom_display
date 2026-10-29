@@ -109,6 +109,8 @@ class DRMPlane {
   void ParseProperties();
   void GetTypeInfo(const PropertyMap &props);
   void SetUpstreamTypeInfo(const PropertyMap &props);
+  void PopulateColorEncodings(const PropertyMap &props);
+  bool SetUpstreamCsc(drmModeAtomicReq *req, DRMCscType csc_type);
   void PerformWrapper(DRMOps code, drmModeAtomicReq *req, ...);
 
   int fd_ = -1;
@@ -128,6 +130,8 @@ class DRMPlane {
   // Only applicable to planes that have scaler
   sde_drm_scaler_v2 scaler_v2_config_copy_ = {};
   sde_drm_csc_v1 csc_config_copy_ = {};
+  // COLOR_ENCODING and COLOR_RANGE enum values for each CSC type the kernel offers
+  std::map<DRMCscType, std::pair<uint64_t, uint64_t>> upstream_csc_ {};
   bool is_lut_configured_ = false;
 
   bool dgm_csc_in_use_ = false;

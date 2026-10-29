@@ -799,8 +799,53 @@ void DRMPlane::SetUpstreamTypeInfo(const PropertyMap &prop_map) {
     }
   }
 
-  DRM_LOGI("Plane %u: using upstream msm capabilities, %zu formats", drm_plane_->plane_id,
-           info->formats_supported.size());
+  PopulateColorEncodings(prop_map);
+
+  DRM_LOGI("Plane %u: using upstream msm capabilities, %zu formats, %zu YUV encodings",
+           drm_plane_->plane_id, info->formats_supported.size(), upstream_csc_.size());
+}
+
+static bool GetEnumValue(const drmModePropertyRes *prop, const char *name, uint64_t *value) {
+  for (int i = 0; i < prop->count_enums; i++) {
+    if (!strcmp(prop->enums[i].name, name)) {
+      *value = prop->enums[i].value;
+      return true;
+    }
+  }
+
+  return false;
+}
+
+void DRMPlane::PopulateColorEncodings(const PropertyMap &prop_map) {
+  static const struct {
+    DRMCscType type;
+    const char *encoding;
+    const char *range;
+  } kEncodings[] = {
+    {DRMCscType::kCscYuv2Rgb601L, "ITU-R BT.601 YCbCr", "YCbCr limited range"},
+    {DRMCscType::kCscYuv2Rgb601FR, "ITU-R BT.601 YCbCr", "YCbCr full range"},
+    {DRMCscType::kCscYuv2Rgb709L, "ITU-R BT.709 YCbCr", "YCbCr limited range"},
+    {DRMCscType::kCscYuv2Rgb709FR, "ITU-R BT.709 YCbCr", "YCbCr full range"},
+    {DRMCscType::kCscYuv2Rgb2020L, "ITU-R BT.2020 YCbCr", "YCbCr limited range"},
+    {DRMCscType::kCscYuv2Rgb2020FR, "ITU-R BT.2020 YCbCr", "YCbCr full range"},
+  };
+
+  auto encoding = prop_map.find(DRMProperty::COLOR_ENCODING);
+  auto range = prop_map.find(DRMProperty::COLOR_RANGE);
+  if (encoding == prop_map.end() || range == prop_map.end()) {
+    return;
+  }
+
+  const drmModePropertyRes *encoding_prop = std::get<1>(encoding->second);
+  const drmModePropertyRes *range_prop = std::get<1>(range->second);
+  for (auto &entry : kEncodings) {
+    uint64_t encoding_value = 0;
+    uint64_t range_value = 0;
+    if (GetEnumValue(encoding_prop, entry.encoding, &encoding_value) &&
+        GetEnumValue(range_prop, entry.range, &range_value)) {
+      upstream_csc_[entry.type] = make_pair(encoding_value, range_value);
+    }
+  }
 }
 
 void DRMPlane::GetTypeInfo(const PropertyMap &prop_map) {
@@ -1127,7 +1172,7 @@ bool DRMPlane::SetCscConfig(drmModeAtomicReq *req, DRMCscType csc_type) {
   }
 
   if (!prop_mgr_.IsPropertyAvailable(DRMProperty::CSC_V1)) {
-    return false;
+    return SetUpstreamCsc(req, csc_type);
   }
 
   auto prop_id = prop_mgr_.GetPropertyId(DRMProperty::CSC_V1);
@@ -1139,6 +1184,27 @@ bool DRMPlane::SetCscConfig(drmModeAtomicReq *req, DRMCscType csc_type) {
                 reinterpret_cast<uint64_t>(&csc_config_copy_), false /* cache */,
                 tmp_prop_val_map_);
   }
+
+  return true;
+}
+
+bool DRMPlane::SetUpstreamCsc(drmModeAtomicReq *req, DRMCscType csc_type) {
+  if (csc_type == kCscTypeMax) {
+    return true;
+  }
+
+  auto csc = upstream_csc_.find(csc_type);
+  if (csc == upstream_csc_.end()) {
+    DRM_LOGE("Plane %d: CSC type %d has no upstream encoding", drm_plane_->plane_id,
+             static_cast<int>(csc_type));
+    return false;
+  }
+
+  AddProperty(req, drm_plane_->plane_id, prop_mgr_.GetPropertyId(DRMProperty::COLOR_ENCODING),
+              csc->second.first, true /* cache */, tmp_prop_val_map_);
+  AddProperty(req, drm_plane_->plane_id, prop_mgr_.GetPropertyId(DRMProperty::COLOR_RANGE),
+              csc->second.second, true /* cache */, tmp_prop_val_map_);
+  DRM_LOGD("Plane %d: Setting CSC type %d", drm_plane_->plane_id, static_cast<int>(csc_type));
 
   return true;
 }

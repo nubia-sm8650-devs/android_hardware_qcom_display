@@ -249,6 +249,8 @@ DRMProperty DRMPropertyManager::GetPropertyEnum(const std::string &name) const {
   if (name == "pixel blend mode") { return DRMProperty::PIXEL_BLEND_MODE; }
   if (name == "IN_FORMATS") { return DRMProperty::IN_FORMATS; }
   if (name == "CTM") { return DRMProperty::CTM; }
+  if (name == "COLOR_ENCODING") { return DRMProperty::COLOR_ENCODING; }
+  if (name == "COLOR_RANGE") { return DRMProperty::COLOR_RANGE; }
 
   return DRMProperty::INVALID;
 }
