@@ -2560,10 +2560,24 @@ bool DisplayBase::IsSupportColorModeAttribute(const std::string &color_mode) {
   return true;
 }
 
+static bool IsIdentityColorTransform(const uint32_t length, const double *color_transform) {
+  if (!color_transform || length != 16) {
+    return false;
+  }
+
+  for (uint32_t i = 0; i < length; i++) {
+    if (color_transform[i] != ((i % 5 == 0) ? 1.0 : 0.0)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 DisplayError DisplayBase::SetColorTransform(const uint32_t length, const double *color_transform) {
   ClientLock lock(disp_mutex_);
   if (!color_mgr_) {
-    return kErrorNotSupported;
+    return IsIdentityColorTransform(length, color_transform) ? kErrorNone : kErrorNotSupported;
   }
 
   if (!color_transform) {
