@@ -286,6 +286,8 @@ class HWDeviceDRM : public HWInterface {
   DisplayError SetPPConfig(void *payload, size_t size);
   DisplayError GetQsyncFps(uint32_t *qsync_fps) { return kErrorNotSupported; }
   void SetDestScalarData(const DestScaleInfoMap dest_scale_info_map) { return; };
+  DisplayError SetColorTransform(uint32_t length, const double *color_transform);
+  void SetCtm(bool device_composition);
 
   class Registry {
    public:
@@ -337,6 +339,10 @@ class HWDeviceDRM : public HWInterface {
   sde_drm::DRMConnectorInfo connector_info_ = {};
   bool first_cycle_ = true;
   bool first_null_cycle_ = true;
+  bool has_ctm_ = false;
+  bool ctm_active_ = false;
+  bool ctm_device_composition_ = false;
+  drm_color_ctm ctm_ = {};
   HWMixerAttributes mixer_attributes_ = {};
   std::vector<sde_drm::DRMSolidfillStage> solid_fills_ {};
   sde_drm::DRMNoiseLayerConfig noise_cfg_ = {};

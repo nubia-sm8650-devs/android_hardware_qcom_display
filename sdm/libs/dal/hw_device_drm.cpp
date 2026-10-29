@@ -132,6 +132,33 @@ std::atomic<uint32_t> HWDeviceDRM::hw_dest_scaler_blocks_used_(0);
 std::mutex HWDeviceDRM::cwb_state_lock_;
 bool HWDeviceDRM::reset_planes_luts_ = true;
 
+static bool HasCrtcProperty(int fd, uint32_t crtc_id, const char *name) {
+  drmModeObjectProperties *props = drmModeObjectGetProperties(fd, crtc_id, DRM_MODE_OBJECT_CRTC);
+  bool found = false;
+
+  if (!props) {
+    return false;
+  }
+
+  for (uint32_t i = 0; i < props->count_props && !found; i++) {
+    drmModePropertyRes *prop = drmModeGetProperty(fd, props->props[i]);
+    if (prop) {
+      found = !strcmp(prop->name, name);
+      drmModeFreeProperty(prop);
+    }
+  }
+
+  drmModeFreeObjectProperties(props);
+
+  return found;
+}
+
+static uint64_t ToCtmCoefficient(double value) {
+  uint64_t magnitude = static_cast<uint64_t>(llround(fabs(value) * 4294967296.0));
+
+  return (value < 0.0 ? (1ULL << 63) : 0) | (magnitude & ~(1ULL << 63));
+}
+
 static PPBlock GetPPBlock(const HWToneMapLut &lut_type) {
   PPBlock pp_block = kPPBlockMax;
   switch (lut_type) {
@@ -569,6 +596,9 @@ DisplayError HWDeviceDRM::Init() {
     drm_mgr_intf_->UnregisterDisplay(&token_);
     return kErrorResources;
   }
+
+  // Without a color manager, upstream msm applies the color transform through the CRTC CTM
+  has_ctm_ = drm_utils::kUpstreamMsm && HasCrtcProperty(dev_fd_, token_.crtc_id, "CTM");
 
   ret = drm_mgr_intf_->GetConnectorInfo(token_.conn_id, &connector_info_);
   if (ret) {
@@ -1214,6 +1244,7 @@ DisplayError HWDeviceDRM::PowerOn(const HWQosData &qos_data, SyncPoints *sync_po
 
   drm_atomic_intf_->Perform(DRMOps::CRTC_SET_ACTIVE, token_.crtc_id, 1);
   drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_POWER_MODE, token_.conn_id, DRMPowerMode::ON);
+  SetCtm(ctm_device_composition_);
   drm_atomic_intf_->Perform(DRMOps::CRTC_GET_RELEASE_FENCE, token_.crtc_id, &release_fence_fd);
   drm_atomic_intf_->Perform(DRMOps::CONNECTOR_GET_RETIRE_FENCE, token_.conn_id, &retire_fence_fd);
   if (enable_brightness_drm_prop_ && cached_brightness_level_ != -1) {
@@ -1735,6 +1766,14 @@ void HWDeviceDRM::SetupAtomic(Fence::ScopedRef &scoped_ref, HWLayersInfo *hw_lay
     }
   }
 
+  bool device_composition = std::any_of(
+      hw_layers_info->hw_layers.begin(), hw_layers_info->hw_layers.end(),
+      [](const Layer &layer) { return layer.composition == kCompositionSDE; });
+  SetCtm(device_composition);
+  if (!validate) {
+    ctm_device_composition_ = device_composition;
+  }
+
   if (update_config) {
     SetSolidfillStages();
     ApplyNoiseLayerConfig();
@@ -1936,6 +1975,49 @@ void HWDeviceDRM::SetSolidfillStages() {
 void HWDeviceDRM::ClearSolidfillStages() {
   solid_fills_.clear();
   SetSolidfillStages();
+}
+
+DisplayError HWDeviceDRM::SetColorTransform(uint32_t length, const double *color_transform) {
+  ctm_active_ = false;
+
+  if (!has_ctm_ || !color_transform || length != 16) {
+    return kErrorNotSupported;
+  }
+
+  // CTM has no offsets and PCC coefficients span [-4, 4)
+  if (color_transform[3] != 0.0 || color_transform[7] != 0.0 || color_transform[11] != 0.0 ||
+      color_transform[12] != 0.0 || color_transform[13] != 0.0 || color_transform[14] != 0.0 ||
+      color_transform[15] != 1.0) {
+    return kErrorNotSupported;
+  }
+
+  drm_color_ctm ctm = {};
+  for (uint32_t row = 0; row < 3; row++) {
+    for (uint32_t col = 0; col < 3; col++) {
+      double value = color_transform[col * 4 + row];
+      if (fabs(value) >= 4.0) {
+        return kErrorNotSupported;
+      }
+      ctm.matrix[row * 3 + col] = ToCtmCoefficient(value);
+    }
+  }
+
+  ctm_ = ctm;
+  ctm_active_ = true;
+
+  return kErrorNone;
+}
+
+void HWDeviceDRM::SetCtm(bool device_composition) {
+  static const drm_color_ctm identity = {{1ULL << 32, 0, 0, 0, 1ULL << 32, 0, 0, 0, 1ULL << 32}};
+
+  if (!has_ctm_) {
+    return;
+  }
+
+  // SurfaceFlinger applies the matrix itself to frames without device composition
+  const drm_color_ctm *ctm = (ctm_active_ && device_composition) ? &ctm_ : &identity;
+  drm_atomic_intf_->Perform(DRMOps::CRTC_SET_CTM, token_.crtc_id, ctm);
 }
 
 DisplayError HWDeviceDRM::Validate(HWLayersInfo *hw_layers_info) {

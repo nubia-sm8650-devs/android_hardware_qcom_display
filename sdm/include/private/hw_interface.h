@@ -191,6 +191,10 @@ class HWInterface {
 
  protected:
   virtual ~HWInterface() { }
+
+  // Declared after the destructor so that the slots blobs already call keep their vtable index
+ public:
+  virtual DisplayError SetColorTransform(uint32_t length, const double *color_transform) = 0;
 };
 
 }  // namespace sdm

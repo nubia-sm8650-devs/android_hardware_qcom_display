@@ -2577,6 +2577,11 @@ static bool IsIdentityColorTransform(const uint32_t length, const double *color_
 DisplayError DisplayBase::SetColorTransform(const uint32_t length, const double *color_transform) {
   ClientLock lock(disp_mutex_);
   if (!color_mgr_) {
+    if (hw_intf_->SetColorTransform(length, color_transform) == kErrorNone) {
+      validated_ = false;
+      return kErrorNone;
+    }
+
     return IsIdentityColorTransform(length, color_transform) ? kErrorNone : kErrorNotSupported;
   }
 
