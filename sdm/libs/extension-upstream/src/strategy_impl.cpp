@@ -11,6 +11,7 @@
 #include <utils/rect.h>
 
 #include <algorithm>
+#include <tuple>
 #include <utility>
 
 #include "plane_limits.h"
@@ -21,7 +22,8 @@ namespace sdm {
 
 namespace {
 
-constexpr size_t kMaxMixedAttempts = 2;
+constexpr size_t kMaxShortestAttempts = 2;
+constexpr size_t kMaxMixedAttempts = 3;
 
 bool IsSdrPrimaries(ColorPrimaries primaries) {
     return primaries == ColorPrimaries_BT709_5 || primaries == ColorPrimaries_BT601_6_625 ||
@@ -97,50 +99,80 @@ void StrategyImpl::AddSdeAttempts(uint32_t max_layers, bool gpu_target) {
     const std::vector<Layer*>& layers = disp_layer_stack_->stack->layers;
     uint32_t count = disp_layer_stack_->info.app_layer_count;
     uint32_t budget = std::min({max_layers, plane_count_, UINT32(kMaxSDELayers)});
-    uint32_t first_gpu = count;
-    uint32_t last_gpu = 0;
+    std::vector<uint32_t> gpu_sum(count + 1, 0);
+    std::vector<uint32_t> vig_sum(count + 1, 0);
+    std::vector<uint32_t> updating_sum(count + 1, 0);
 
     for (uint32_t i = 0; i < count; i++) {
-        if (!IsSdeCapable(*layers.at(i))) {
-            first_gpu = std::min(first_gpu, i);
-            last_gpu = i;
-        }
+        const Layer& layer = *layers.at(i);
+        bool capable = IsSdeCapable(layer);
+        gpu_sum[i + 1] = gpu_sum[i] + !capable;
+        vig_sum[i + 1] = vig_sum[i] + (capable && NeedsVig(layer));
+        updating_sum[i + 1] = updating_sum[i] + layer.flags.updating;
     }
 
-    bool needs_gpu = first_gpu < count;
-    if (!needs_gpu && count <= budget) {
+    bool full_sde = !gpu_sum[count] && count <= budget && vig_sum[count] <= kVigPipes;
+    if (full_sde) {
         attempts_.push_back({0, 0});
-        return;
     }
 
     if (!gpu_target || budget < 2) {
         return;
     }
 
-    uint32_t batch = count >= budget ? count + 1 - budget : 1;
-    if (needs_gpu) {
-        batch = std::max(batch, last_gpu - first_gpu + 1);
+    const Layer& target = *layers.at(UINT32(disp_layer_stack_->info.gpu_target_index));
+    uint32_t vig_left = kVigPipes - NeedsVig(target);
+    std::vector<Window> windows;
+    for (uint32_t length = 1; length < count; length++) {
+        if (count - length + 1 > budget) {
+            continue;
+        }
+
+        for (uint32_t start = 0; start + length <= count; start++) {
+            uint32_t end = start + length;
+            uint32_t vig = vig_sum[end] - vig_sum[start];
+
+            if (gpu_sum[end] - gpu_sum[start] != gpu_sum[count] || vig_sum[count] - vig > vig_left) {
+                continue;
+            }
+
+            windows.push_back({start, length, vig, updating_sum[end] - updating_sum[start]});
+        }
     }
 
-    if (batch >= count) {
+    if (windows.empty()) {
         return;
     }
 
-    uint32_t lowest = needs_gpu && last_gpu + 1 > batch ? last_gpu + 1 - batch : 0;
-    uint32_t highest = needs_gpu ? std::min(first_gpu, count - batch) : count - batch;
-    std::vector<std::pair<uint32_t, uint32_t>> starts;
+    auto by_updating = [](const Window& a, const Window& b) {
+        return std::tie(a.length, a.updating, a.start) < std::tie(b.length, b.updating, b.start);
+    };
+    // A stack within the pipe counts can still fail on a VIG pipe split or on bandwidth, so prefer
+    // batches that take VIG layers off the planes
+    auto by_vig = [](const Window& a, const Window& b) {
+        return std::tie(a.length, b.vig, a.updating, a.start) <
+               std::tie(b.length, a.vig, b.updating, b.start);
+    };
 
-    for (uint32_t start = lowest; start <= highest; start++) {
-        uint32_t updating = 0;
-        for (uint32_t i = start; i < start + batch; i++) {
-            updating += layers.at(i)->flags.updating;
+    size_t mixed = 0;
+    if (!full_sde) {
+        uint32_t shortest = std::min_element(windows.begin(), windows.end(), by_updating)->length;
+        auto shortest_end = std::partition(windows.begin(), windows.end(),
+                                           [&](const Window& w) { return w.length == shortest; });
+
+        std::sort(windows.begin(), shortest_end, by_updating);
+        for (auto it = windows.begin(); it != shortest_end && mixed < kMaxShortestAttempts; it++) {
+            attempts_.push_back({it->start, it->start + it->length});
+            mixed++;
         }
-        starts.push_back({updating, start});
+
+        windows.erase(windows.begin(), shortest_end);
     }
 
-    std::sort(starts.begin(), starts.end());
-    for (size_t i = 0; i < std::min(starts.size(), kMaxMixedAttempts); i++) {
-        attempts_.push_back({starts[i].second, starts[i].second + batch});
+    std::sort(windows.begin(), windows.end(), by_vig);
+    for (auto it = windows.begin(); it != windows.end() && mixed < kMaxMixedAttempts; it++) {
+        attempts_.push_back({it->start, it->start + it->length});
+        mixed++;
     }
 }
 
@@ -209,6 +241,14 @@ bool StrategyImpl::IsGeometrySupported(const Layer& layer) const {
     }
 
     return IsScaleSupported(scale_x, scale_y);
+}
+
+bool StrategyImpl::NeedsVig(const Layer& layer) const {
+    LayerRect dst = MapDstToMixer(layer.dst_rect);
+
+    return !IsRgbFormat(layer.input_buffer.format) ||
+           INT(layer.src_rect.right - layer.src_rect.left) != INT(dst.right - dst.left) ||
+           INT(layer.src_rect.bottom - layer.src_rect.top) != INT(dst.bottom - dst.top);
 }
 
 DisplayError StrategyImpl::GetNextStrategy() {

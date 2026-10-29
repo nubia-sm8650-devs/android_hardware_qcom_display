@@ -41,11 +41,19 @@ class StrategyImpl : public StrategyInterface {
         uint32_t gpu_end;
     };
 
+    struct Window {
+        uint32_t start;
+        uint32_t length;
+        uint32_t vig;
+        uint32_t updating;
+    };
+
     void UpdatePlaneCaps();
     void AddSdeAttempts(uint32_t max_layers, bool gpu_target);
     bool IsSdeCapable(const Layer& layer) const;
     bool IsColorSupported(const LayerBuffer& buffer) const;
     bool IsGeometrySupported(const Layer& layer) const;
+    bool NeedsVig(const Layer& layer) const;
     void AddHwLayer(uint32_t index);
     LayerRect MapDstToMixer(const LayerRect& dst) const;
     void MapToMixer(Layer* layer) const;
