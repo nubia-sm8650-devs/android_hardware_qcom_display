@@ -1,0 +1,23 @@
+//
+// SPDX-FileCopyrightText: The LineageOS Project
+// SPDX-License-Identifier: Apache-2.0
+//
+
+cc_library_shared {
+    name: "libsdmextension.upstream",
+    stem: "libsdmextension",
+    defaults: ["qtidisplay_defaults"],
+    device_specific: true,
+    srcs: ["src/*.cpp"],
+    header_libs: ["display_headers"],
+    shared_libs: [
+        "libdisplaydebug",
+        "libsdmutils",
+    ],
+    cflags: [
+        "-Wextra",
+        "-Wno-unused-parameter",
+        "-DLOG_TAG=\"SDM\"",
+    ],
+    version_script: "libsdmextension.map",
+}
