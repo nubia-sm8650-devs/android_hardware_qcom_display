@@ -176,11 +176,12 @@ bool StrategyImpl::IsColorSupported(const LayerBuffer& buffer) const {
         return false;
     }
 
-    // _dpu_plane_get_csc() converts every YUV format with BT.601 limited range coefficients
+    // HWDeviceDRM::SelectCscType() derives the YUV matrix from the primaries, and picks the Dolby
+    // Vision profile 5 matrix that upstream msm lacks when extended metadata is present
     if (!IsRgbFormat(buffer.format) &&
-        ((color.matrixCoefficients != MatrixCoEff_BT601_6_625 &&
-          color.matrixCoefficients != MatrixCoEff_BT601_6_525) ||
-         color.range != Range_Limited)) {
+        (!IsSdrPrimaries(color.colorPrimaries) ||
+         (color.range != Range_Limited && color.range != Range_Full) ||
+         (buffer.extended_content_metadata && buffer.extended_content_metadata->size))) {
         return false;
     }
 
