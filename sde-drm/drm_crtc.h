@@ -77,8 +77,10 @@ class DRMCrtc {
               DRMRect *spr_rois);
   void SetSolidfillStages(drmModeAtomicReq *req, uint32_t obj_id,
                           const std::vector<DRMSolidfillStage> *solid_fills);
+#ifndef TARGET_USES_UPSTREAM_MSM
   void SetNoiseLayerConfig(drmModeAtomicReq *req, uint32_t obj_id,
                            const DRMNoiseLayerConfig *noise_cfg);
+#endif
   void SetCtm(drmModeAtomicReq *req, uint32_t obj_id, const drm_color_ctm *ctm);
   void EvictCtmBlob(uint32_t prop_id);
   void DestroyCtmBlobs();
@@ -110,7 +112,9 @@ class DRMCrtc {
 #ifndef TARGET_USES_UPSTREAM_MSM
   sde_drm_dest_scaler_data dest_scale_data_ = {};
 #endif
+#ifndef TARGET_USES_UPSTREAM_MSM
   drm_msm_noise_layer_cfg drm_noise_layer_v1_ = {};
+#endif
   std::vector<std::pair<drm_color_ctm, uint32_t>> ctm_blobs_ = {};
 };
 

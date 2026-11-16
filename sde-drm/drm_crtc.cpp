@@ -828,11 +828,13 @@ void DRMCrtc::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
       SetSolidfillStages(req, obj_id, solid_fills);
     } break;
 
+#ifndef TARGET_USES_UPSTREAM_MSM
     case DRMOps::CRTC_SET_NOISELAYER_CONFIG: {
       uint64_t data = va_arg(args, uint64_t);
       const DRMNoiseLayerConfig *noise_cfg = reinterpret_cast<DRMNoiseLayerConfig *>(data);
       SetNoiseLayerConfig(req, obj_id, noise_cfg);
     } break;
+#endif
 
     case DRMOps::CRTC_SET_IDLE_TIMEOUT: {
       uint32_t timeout_ms = va_arg(args, uint32_t);
@@ -1001,6 +1003,7 @@ void DRMCrtc::SetSolidfillStages(drmModeAtomicReq *req, uint32_t obj_id,
 #endif
 }
 
+#ifndef TARGET_USES_UPSTREAM_MSM
 void DRMCrtc::SetNoiseLayerConfig(drmModeAtomicReq *req, uint32_t obj_id,
                                  const DRMNoiseLayerConfig *noise_cfg) {
   drm_msm_noise_layer_cfg *cfg = nullptr;
@@ -1017,6 +1020,7 @@ void DRMCrtc::SetNoiseLayerConfig(drmModeAtomicReq *req, uint32_t obj_id,
   AddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::NOISE_LAYER_V1),
               reinterpret_cast<uint64_t>(cfg), false /* cache */, tmp_prop_val_map_);
 }
+#endif
 
 void DRMCrtc::Dump() {
   DRM_LOGE("id: %d\tbuffer_id: %d\tpos:(%d, %d)\tsize:(%dx%d)\n", drm_crtc_->crtc_id,
