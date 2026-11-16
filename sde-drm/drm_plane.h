@@ -84,7 +84,9 @@ class DRMPlane {
   void Unset(bool is_commit, drmModeAtomicReq *req);
   void PostValidate(uint32_t crtc_id, bool success);
   void PostCommit(uint32_t crtc_id, bool success);
+#ifndef TARGET_USES_UPSTREAM_MSM
   bool SetDgmCscConfig(drmModeAtomicReq *req, uint64_t handle);
+#endif
   void UpdatePPLutFeatureInuse(DRMPPFeatureInfo *data);
   void ResetColorLUTs(bool update_state, drmModeAtomicReq *req);
   void ResetColorLUTState(DRMTonemapLutType lut_type, bool update_state, drmModeAtomicReq *req);
@@ -93,12 +95,14 @@ class DRMPlane {
   void ResetPlanesLUT(drmModeAtomicReq *req);
   void GetIndex(uint8_t *index) { *index = plane_type_info_.pipe_idx; }
   void GetRect(uint8_t *rect) { *rect = plane_type_info_.master_plane_id ? 1 : 0; }
+#ifndef TARGET_USES_UPSTREAM_MSM
   bool SetFp16CscConfig(drmModeAtomicReq *req, DRMFp16CscType csc_type);
   bool SetFp16IgcConfig(drmModeAtomicReq *req, uint32_t igc_en);
   bool SetFp16UnmultConfig(drmModeAtomicReq *req, uint32_t unmult_en);
   bool SetFp16GcConfig(drmModeAtomicReq *req, drm_msm_fp16_gc *fp16_gc_config);
   void UnsetFp16CscConfig();
   void UnsetFp16GcConfig();
+#endif
 #ifdef UCSC_SUPPORTED
   void SetUcscCscConfig(drmModeAtomicReq *req, drm_msm_ucsc_csc *ucsc_csc_config);
   void UnsetUcscCscConfig();
@@ -129,12 +133,16 @@ class DRMPlane {
 
   // Only applicable to planes that have scaler
   sde_drm_scaler_v2 scaler_v2_config_copy_ = {};
+#ifndef TARGET_USES_UPSTREAM_MSM
   sde_drm_csc_v1 csc_config_copy_ = {};
+#endif
   // COLOR_ENCODING and COLOR_RANGE enum values for each CSC type the kernel offers
   std::map<DRMCscType, std::pair<uint64_t, uint64_t>> upstream_csc_ {};
   bool is_lut_configured_ = false;
 
+#ifndef TARGET_USES_UPSTREAM_MSM
   bool dgm_csc_in_use_ = false;
+#endif
   // Tone-mapping lut properties
   DRMPlaneLutState dgm_1d_lut_igc_state_ = kInactive;
   DRMPlaneLutState dgm_1d_lut_gc_state_ = kInactive;
@@ -142,10 +150,12 @@ class DRMPlane {
   DRMPlaneLutState vig_3d_lut_gamut_state_ = kInactive;
 
   // FP16 / UCSC properties
+#ifndef TARGET_USES_UPSTREAM_MSM
   uint32_t fp16_csc_blob_id_ = 0;
   DRMFp16CscType fp16_csc_type_ = kFP16CscTypeMax;
   uint32_t fp16_gc_blob_id_ = 0;
   drm_msm_fp16_gc fp16_gc_config_ = {.flags = 0, .mode = FP16_GC_MODE_INVALID};
+#endif
 #ifdef UCSC_SUPPORTED
   uint32_t ucsc_csc_blob_id_ = 0;
 #endif

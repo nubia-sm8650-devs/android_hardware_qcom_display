@@ -93,11 +93,13 @@ using sde_drm::DRMPowerMode;
 namespace sdm {
 class HWInfoInterface;
 
+#ifndef TARGET_USES_UPSTREAM_MSM
 struct SDECsc {
   struct sde_drm_csc_v1 csc_v1 = {};
   // More here, maybe in a union
 };
 
+#endif
 struct HWCwbConfig {
   bool enabled = false;
   bool dnsc_config = false;
@@ -242,9 +244,11 @@ class HWDeviceDRM : public HWInterface {
   void SetBlending(const LayerBlending &source, sde_drm::DRMBlendType *target);
   void SetSrcConfig(const LayerBuffer &input_buffer, const HWRotatorMode &mode, uint32_t *config);
   void SelectCscType(const LayerBuffer &input_buffer, sde_drm::DRMCscType *type);
+#ifndef TARGET_USES_UPSTREAM_MSM
   void SelectFp16Config(const LayerBuffer &input_buffer, int *igc_en, int *unmult_en,
                         sde_drm::DRMFp16CscType *csc_type, drm_msm_fp16_gc *gc,
                         LayerBlending blend);
+#endif
   void SetRect(const LayerRect &source, sde_drm::DRMRect *target);
   void SetRotation(LayerTransform transform, const HWLayerConfig &layer_config,
                    uint32_t* rot_bit_mask);
@@ -265,8 +269,10 @@ class HWDeviceDRM : public HWInterface {
   void SetUcscGc(const HWUcscGcMode gc_lut_sel, sde_drm::DRMUcscGcMode *gc);
   void SetUcscCsc(const HWUcscCsc &ucsc_csc, drm_msm_ucsc_csc *csc);
 #endif
+#ifndef TARGET_USES_UPSTREAM_MSM
   void SetDGMCsc(const HWPipeCscInfo &dgm_csc_info, SDECsc *csc);
   void SetDGMCscV1(const HWCsc &dgm_csc, sde_drm_csc_v1 *csc_v1);
+#endif
   void SetSsppLutFeatures(HWPipeInfo *pipe_info);
   void AddDimLayerIfNeeded();
   DisplayError NullCommit(bool synchronous, bool retain_planes);

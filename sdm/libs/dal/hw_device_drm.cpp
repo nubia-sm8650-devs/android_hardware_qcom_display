@@ -1590,6 +1590,9 @@ void HWDeviceDRM::SetupAtomic(Fence::ScopedRef &scoped_ref, HWLayersInfo *hw_lay
           drm_atomic_intf_->Perform(DRMOps::PLANE_SET_ZORDER, pipe_id, pipe_info->z_order);
 #endif
 
+#ifdef TARGET_USES_UPSTREAM_MSM
+          int fp16_unmult_en = 0;
+#else
           sde_drm::DRMFp16CscType fp16_csc_type = sde_drm::DRMFp16CscType::kFP16CscTypeMax;
           int fp16_igc_en = 0;
           int fp16_unmult_en = 0;
@@ -1600,6 +1603,7 @@ void HWDeviceDRM::SetupAtomic(Fence::ScopedRef &scoped_ref, HWLayersInfo *hw_lay
           drm_atomic_intf_->Perform(DRMOps::PLANE_SET_FP16_IGC_CONFIG, pipe_id, fp16_igc_en);
           drm_atomic_intf_->Perform(DRMOps::PLANE_SET_FP16_GC_CONFIG, pipe_id, &fp16_gc_config);
           drm_atomic_intf_->Perform(DRMOps::PLANE_SET_FP16_UNMULT_CONFIG, pipe_id, fp16_unmult_en);
+#endif
 
           // Account for PMA block activation directly at translation time to preserve layer
           // blending definition and avoid issues when a layer structure is reused.
@@ -1697,12 +1701,16 @@ void HWDeviceDRM::SetupAtomic(Fence::ScopedRef &scoped_ref, HWLayersInfo *hw_lay
           SetSsppTonemapFeatures(pipe_info);
         } else if (update_luts) {
           if (force_tonemapping_) {
+#ifdef TARGET_USES_UPSTREAM_MSM
+            int fp16_unmult_en = 0;
+#else
             sde_drm::DRMFp16CscType fp16_csc_type = sde_drm::DRMFp16CscType::kFP16CscTypeMax;
             int fp16_igc_en = 0;
             int fp16_unmult_en = 0;
             drm_msm_fp16_gc fp16_gc_config = {.flags = 0, .mode = FP16_GC_MODE_INVALID};
             SelectFp16Config(layer.input_buffer, &fp16_igc_en, &fp16_unmult_en, &fp16_csc_type,
                              &fp16_gc_config, layer.blending);
+#endif
 
             // Account for PMA block activation directly at translation time to preserve layer
             // blending definition and avoid issues when a layer structure is reused.
@@ -2348,6 +2356,7 @@ void HWDeviceDRM::SelectCscType(const LayerBuffer &input_buffer, DRMCscType *typ
   }
 }
 
+#ifndef TARGET_USES_UPSTREAM_MSM
 void HWDeviceDRM::SelectFp16Config(const LayerBuffer &input_buffer, int *igc_en, int *unmult_en,
                                    sde_drm::DRMFp16CscType *csc_type, drm_msm_fp16_gc *gc,
                                    LayerBlending blend) {
@@ -2384,6 +2393,7 @@ void HWDeviceDRM::SelectFp16Config(const LayerBuffer &input_buffer, int *igc_en,
     }
   }
 }
+#endif
 
 void HWDeviceDRM::SetRect(const LayerRect &source, DRMRect *target) {
   target->left = UINT32(source.left);
@@ -2893,6 +2903,7 @@ void HWDeviceDRM::SetSsppTonemapFeatures(HWPipeInfo *pipe_info) {
 }
 
 void HWDeviceDRM::SetLegacyTonemapFeatures(HWPipeInfo *pipe_info) {
+#ifndef TARGET_USES_UPSTREAM_MSM
   if (pipe_info->dgm_csc_info.op != kNoOp) {
     SDECsc csc = {};
     SetDGMCsc(pipe_info->dgm_csc_info, &csc);
@@ -2901,6 +2912,7 @@ void HWDeviceDRM::SetLegacyTonemapFeatures(HWPipeInfo *pipe_info) {
     drm_atomic_intf_->Perform(DRMOps::PLANE_SET_DGM_CSC_CONFIG, pipe_info->pipe_id,
                               reinterpret_cast<uint64_t>(&csc.csc_v1));
   }
+#endif
   if (pipe_info->inverse_pma_info.op != kNoOp) {
     DLOGV_IF(kTagDriverConfig, "Call Perform Inverse PMA Op = %s",
             (pipe_info->inverse_pma_info.op == kSet) ? "Set" : "Reset");
@@ -3027,6 +3039,7 @@ void HWDeviceDRM::SetUcscCsc(const HWUcscCsc &ucsc_csc, drm_msm_ucsc_csc *csc) {
 }
 #endif
 
+#ifndef TARGET_USES_UPSTREAM_MSM
 void HWDeviceDRM::SetDGMCsc(const HWPipeCscInfo &dgm_csc_info, SDECsc *csc) {
   SetDGMCscV1(dgm_csc_info.csc, &csc->csc_v1);
 }
@@ -3046,6 +3059,7 @@ void HWDeviceDRM::SetDGMCscV1(const HWCsc &dgm_csc, sde_drm_csc_v1 *csc_v1) {
     csc_v1->post_clamp[i] = dgm_csc.post_clamp[i];
   }
 }
+#endif
 
 void HWDeviceDRM::SetSsppLutFeatures(HWPipeInfo *pipe_info) {
   for (HWPipeTonemapLutInfo &lut_info : pipe_info->lut_info) {

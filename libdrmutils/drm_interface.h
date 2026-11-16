@@ -1280,6 +1280,7 @@ enum DRMFp16CscType {
   kFP16CscTypeMax,
 };
 
+#ifndef TARGET_USES_UPSTREAM_MSM
 struct DRMFp16Config {
   uint32_t igc_en;
   uint32_t unmult_en;
@@ -1287,6 +1288,7 @@ struct DRMFp16Config {
   drm_msm_fp16_gc gc;
 };
 
+#endif
 enum struct DRMCacheWBState {
   DISABLED = 0,
   ENABLED,

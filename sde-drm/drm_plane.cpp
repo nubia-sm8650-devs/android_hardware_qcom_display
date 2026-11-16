@@ -108,6 +108,7 @@ using std::lock_guard;
 #define DRM_FORMAT_MOD_QCOM_COMPRESSED fourcc_mod_code(QCOM, 1)
 #endif
 
+#ifndef TARGET_USES_UPSTREAM_MSM
 static struct sde_drm_csc_v1 csc_10bit_convert[kCscTypeMax] = {
   [kCscYuv2Rgb601L] = {
     {
@@ -198,7 +199,9 @@ static struct sde_drm_csc_v1 csc_10bit_convert[kCscTypeMax] = {
     { 0x0, 0x3ff, 0x0, 0x3ff, 0x0, 0x3ff,},
   },
 };
+#endif
 
+#ifndef TARGET_USES_UPSTREAM_MSM
 static struct drm_msm_fp16_csc csc_fp16_convert[kFP16CscTypeMax] = {
   [kFP16CscSrgb2Dcip3] = {
       0x0,  // flags -- currently unused
@@ -223,6 +226,7 @@ static struct drm_msm_fp16_csc csc_fp16_convert[kFP16CscTypeMax] = {
       {0xD527, 0x5A7D, 0XCC26, 0x586D, 0xCB6C, 0x585D, 0x0, 0x57D0,}
   },
 };
+#endif
 
 static uint8_t REFLECT_X = 0;
 static uint8_t REFLECT_Y = 0;
@@ -1171,6 +1175,9 @@ bool DRMPlane::SetCscConfig(drmModeAtomicReq *req, DRMCscType csc_type) {
     return false;
   }
 
+#ifdef TARGET_USES_UPSTREAM_MSM
+  return SetUpstreamCsc(req, csc_type);
+#else
   if (!prop_mgr_.IsPropertyAvailable(DRMProperty::CSC_V1)) {
     return SetUpstreamCsc(req, csc_type);
   }
@@ -1186,6 +1193,7 @@ bool DRMPlane::SetCscConfig(drmModeAtomicReq *req, DRMCscType csc_type) {
   }
 
   return true;
+#endif
 }
 
 bool DRMPlane::SetUpstreamCsc(drmModeAtomicReq *req, DRMCscType csc_type) {
@@ -1209,6 +1217,7 @@ bool DRMPlane::SetUpstreamCsc(drmModeAtomicReq *req, DRMCscType csc_type) {
   return true;
 }
 
+#ifndef TARGET_USES_UPSTREAM_MSM
 bool DRMPlane::SetFp16CscConfig(drmModeAtomicReq *req, DRMFp16CscType csc_type) {
   if (csc_type > kFP16CscTypeMax) {
     return false;
@@ -1316,6 +1325,7 @@ void DRMPlane::UnsetFp16GcConfig() {
     fp16_gc_blob_id_ = 0;
   }
 }
+#endif
 
 #ifdef UCSC_SUPPORTED
 void DRMPlane::SetUcscCscConfig(drmModeAtomicReq *req, drm_msm_ucsc_csc *ucsc_csc_config) {
@@ -1663,12 +1673,14 @@ void DRMPlane::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
        DRM_LOGD("Plane %d: %s inverse pma", obj_id, pma ? "Setting" : "Resetting");
      } break;
 
+#ifndef TARGET_USES_UPSTREAM_MSM
     case DRMOps::PLANE_SET_DGM_CSC_CONFIG: {
       uint64_t handle = va_arg(args, uint64_t);
       if (SetDgmCscConfig(req, handle)) {
         DRM_LOGD("Plane %d: Setting Csc Lut config", obj_id);
       }
     } break;
+#endif
 
     case DRMOps::PLANE_SET_POST_PROC: {
       DRMPPFeatureInfo *data = va_arg(args, DRMPPFeatureInfo*);
@@ -1679,6 +1691,7 @@ void DRMPlane::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
       }
     } break;
 
+#ifndef TARGET_USES_UPSTREAM_MSM
     case DRMOps::PLANE_SET_FP16_CSC_CONFIG: {
       uint32_t config = va_arg(args, uint32_t);
       SetFp16CscConfig(req, (DRMFp16CscType)config);
@@ -1700,6 +1713,7 @@ void DRMPlane::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
       uint32_t config = va_arg(args, uint32_t);
       SetFp16UnmultConfig(req, config);
     } break;
+#endif
 
 #ifdef UCSC_SUPPORTED
     case DRMOps::PLANE_SET_UCSC_UNMULT_CONFIG: {
@@ -1892,6 +1906,7 @@ void DRMPlane::Unset(bool is_commit, drmModeAtomicReq *req) {
     PerformWrapper(DRMOps::PLANE_SET_INVERSE_PMA, req, 0);
   }
 
+#ifndef TARGET_USES_UPSTREAM_MSM
   // Reset the sspp tonemap properties if they were set and update the in-use only if
   // its a Commit as Unset is called in Validate as well.
   if (dgm_csc_in_use_) {
@@ -1901,19 +1916,23 @@ void DRMPlane::Unset(bool is_commit, drmModeAtomicReq *req) {
     DRM_LOGV("Plane %d Clearing DGM CSC", drm_plane_->plane_id);
     dgm_csc_in_use_ = !is_commit;
   }
+#endif
   ResetColorLUTs(is_commit, req);
 
+#ifndef TARGET_USES_UPSTREAM_MSM
   // Reset FP16 properties
   PerformWrapper(DRMOps::PLANE_SET_FP16_CSC_CONFIG, req, kFP16CscTypeMax);
   PerformWrapper(DRMOps::PLANE_SET_FP16_IGC_CONFIG, req, 0);
   PerformWrapper(DRMOps::PLANE_SET_FP16_UNMULT_CONFIG, req, 0);
   drm_msm_fp16_gc fp16_gc_config = {.flags = 0, .mode = FP16_GC_MODE_INVALID};
   PerformWrapper(DRMOps::PLANE_SET_FP16_GC_CONFIG, req, &fp16_gc_config);
+#endif
 
   tmp_prop_val_map_.clear();
   committed_prop_val_map_.clear();
 }
 
+#ifndef TARGET_USES_UPSTREAM_MSM
 bool DRMPlane::SetDgmCscConfig(drmModeAtomicReq *req, uint64_t handle) {
   if (plane_type_info_.type == DRMPlaneType::DMA &&
       prop_mgr_.IsPropertyAvailable(DRMProperty::CSC_DMA_V1)) {
@@ -1936,6 +1955,7 @@ bool DRMPlane::SetDgmCscConfig(drmModeAtomicReq *req, uint64_t handle) {
 
   return false;
 }
+#endif
 
 void DRMPlane::ResetColorLUTs(bool update_state, drmModeAtomicReq *req) {
   // Reset the color luts if they were set and update the state only if its a Commit as Unset
