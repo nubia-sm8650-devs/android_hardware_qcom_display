@@ -152,7 +152,11 @@ qtidisplay_cc_defaults {
             cflags: ["-DUDFPS_ZPOS"],
         },
         upstream_msm: {
-            cflags: ["-DTARGET_USES_UPSTREAM_MSM"],
+            cflags: [
+                "-DTARGET_USES_UPSTREAM_MSM",
+                "-UPP_DRM_ENABLE",
+                "-UTARGET_USES_SMMU_PROXY",
+            ],
         },
         var3 : {
             enabled: false,
