@@ -67,17 +67,21 @@ class HWInfoDRM : public HWInfoInterface {
 
  private:
   void Deinit();
+#ifndef TARGET_USES_UPSTREAM_MSM
   DisplayError GetHWRotatorInfo(HWResourceInfo *hw_resource);
+#endif
   void GetSystemInfo(HWResourceInfo *hw_resource);
   void GetHWPlanesInfo(HWResourceInfo *hw_resource);
   void GetWBInfo(HWResourceInfo *hw_resource);
   DisplayError GetDynamicBWLimits(HWResourceInfo *hw_resource);
   void GetSDMFormat(uint32_t drm_format, uint64_t drm_format_modifier,
                     std::vector<LayerBufferFormat> *sdm_formats);
+#ifndef TARGET_USES_UPSTREAM_MSM
   void GetSDMFormat(uint32_t v4l2_format, LayerBufferFormat *sdm_format);
   void GetRotatorFormatsForType(int fd, uint32_t type,
                                 std::vector<LayerBufferFormat> *supported_formats);
   DisplayError GetRotatorSupportedFormats(uint32_t v4l2_index, HWResourceInfo *hw_resource);
+#endif
   void PopulateSupportedFmts(HWSubBlockType sub_blk_type, const sde_drm::DRMPlaneTypeInfo &info,
                              HWResourceInfo *hw_resource);
   void PopulateSupportedInlineFmts(const sde_drm::DRMPlaneTypeInfo &info,

@@ -327,9 +327,11 @@ DisplayError HWInfoDRM::GetHWResourceInfo(HWResourceInfo *hw_resource) {
   DLOGI("\tFudge_factor = %d", hw_resource->extra_fudge_factor);
   DLOGI("\tib_fudge_factor = %f", hw_resource->ib_fudge_factor);
 
+#ifndef TARGET_USES_UPSTREAM_MSM
   if (hw_resource->separate_rotator || hw_resource->num_dma_pipe) {
     GetHWRotatorInfo(hw_resource);
   }
+#endif
 
   DLOGI("Has Support for multiple bw limits shown below");
   for (int index = 0; index < kBwModeMax; index++) {
@@ -698,6 +700,7 @@ void HWInfoDRM::GetWBInfo(HWResourceInfo *hw_resource) {
   drm_mgr_intf_->UnregisterDisplay(&token);
 }
 
+#ifndef TARGET_USES_UPSTREAM_MSM
 void HWInfoDRM::GetSDMFormat(uint32_t v4l2_format, LayerBufferFormat *sdm_format) {
   switch (v4l2_format) {
     case SDE_PIX_FMT_ARGB_8888:         *sdm_format = kFormatARGB8888;                 break;
@@ -835,6 +838,7 @@ DisplayError HWInfoDRM::GetHWRotatorInfo(HWResourceInfo *hw_resource) {
 
   return kErrorNone;
 }
+#endif
 
 void HWInfoDRM::GetSDMFormat(uint32_t drm_format, uint64_t drm_format_modifier,
                              vector<LayerBufferFormat> *sdm_formats) {
