@@ -274,6 +274,10 @@ DisplayError HWEventsDRM::SetEventParser() {
   DisplayError error = kErrorNone;
 
   for (auto &event_data : event_data_list_) {
+    if (drm_utils::kUpstreamMsm && IsSdeDriverEvent(event_data.event_type)) {
+      continue;
+    }
+
     switch (event_data.event_type) {
       case HWEvent::VSYNC:
         event_data.event_parser = &HWEventsDRM::HandleVSync;
@@ -290,6 +294,7 @@ DisplayError HWEventsDRM::SetEventParser() {
       case HWEvent::THERMAL_LEVEL:
         event_data.event_parser = &HWEventsDRM::HandleThermal;
         break;
+#ifndef TARGET_USES_UPSTREAM_MSM
       case HWEvent::IDLE_POWER_COLLAPSE:
         event_data.event_parser = &HWEventsDRM::HandleIdlePowerCollapse;
         break;
@@ -302,9 +307,11 @@ DisplayError HWEventsDRM::SetEventParser() {
       case HWEvent::HISTOGRAM:
         event_data.event_parser = &HWEventsDRM::HandleHistogram;
         break;
+#endif
       case HWEvent::BACKLIGHT_EVENT:
         event_data.event_parser = &HWEventsDRM::HandleBacklightEvent;
         break;
+#ifndef TARGET_USES_UPSTREAM_MSM
       case HWEvent::MMRM:
         event_data.event_parser = &HWEventsDRM::HandleMMRM;
         break;
@@ -314,6 +321,7 @@ DisplayError HWEventsDRM::SetEventParser() {
       case HWEvent::VM_RELEASE_EVENT:
         event_data.event_parser = &HWEventsDRM::HandleVmReleaseEvent;
         break;
+#endif
       default:
         error = kErrorParameters;
         break;
@@ -401,6 +409,10 @@ DisplayError HWEventsDRM::Deinit() {
 }
 
 DisplayError HWEventsDRM::SetEventState(HWEvent event, bool enable, void *arg) {
+  if (drm_utils::kUpstreamMsm && IsSdeDriverEvent(event)) {
+    return kErrorNone;
+  }
+
   if (event != HWEvent::VSYNC) {
     if (enable == registered_hw_events_.test(event)) {
       DLOGW("%s of %sregistered hw event %d occurred!!",
@@ -444,6 +456,7 @@ DisplayError HWEventsDRM::SetEventState(HWEvent event, bool enable, void *arg) {
         }
       }
     } break;
+#ifndef TARGET_USES_UPSTREAM_MSM
     case HWEvent::POWER_EVENT: {
       if (RegisterPowerEvents(enable) != kErrorNone) {
         return kErrorResources;
@@ -473,6 +486,7 @@ DisplayError HWEventsDRM::SetEventState(HWEvent event, bool enable, void *arg) {
     case HWEvent::VM_RELEASE_EVENT: {
       RegisterVmReleaseEvents(enable);
     } break;
+#endif
     default:
       DLOGE("Event not supported");
       return kErrorNotSupported;
@@ -651,6 +665,7 @@ DisplayError HWEventsDRM::RegisterVSync() {
   return kErrorNone;
 }
 
+#ifndef TARGET_USES_UPSTREAM_MSM
 DisplayError HWEventsDRM::RegisterPanelDead(bool enable) {
   if (panel_dead_index_ == UINT32_MAX) {
     DLOGI("panel dead is not supported event");
@@ -836,6 +851,7 @@ DisplayError HWEventsDRM::RegisterVmReleaseEvents(bool enable) {
   DLOGI("Register vm release event %s successful", enable ? "enable" : "disable");
   return kErrorNone;
 }
+#endif
 
 void HWEventsDRM::HandleVSync(char *data) {
   DisplayError ret = kErrorNone;
@@ -870,6 +886,7 @@ void HWEventsDRM::HandleVSync(char *data) {
   }
 }
 
+#ifndef TARGET_USES_UPSTREAM_MSM
 void HWEventsDRM::HandlePanelDead(char *data) {
   char event_data[kMaxStringLength] = {0};
   int32_t size;
@@ -910,6 +927,7 @@ void HWEventsDRM::HandlePanelDead(char *data) {
 
   return;
 }
+#endif
 
 void HWEventsDRM::VSyncHandlerCallback(int fd, unsigned int sequence, unsigned int tv_sec,
                                        unsigned int tv_usec, void *data) {
@@ -924,6 +942,7 @@ void HWEventsDRM::HandleCECMessage(char *data) {
   event_handler_->CECMessage(data);
 }
 
+#ifndef TARGET_USES_UPSTREAM_MSM
 void HWEventsDRM::HandleIdlePowerCollapse(char *data) {
   char event_data[kMaxStringLength];
   int32_t size;
@@ -1056,11 +1075,13 @@ void HWEventsDRM::HandleHistogram(char * /*data*/) {
   auto blob_id = reinterpret_cast<uint32_t *>(msm_event->data);
   event_handler_->Histogram(poll_fds_[histogram_index_].fd, *blob_id);
 }
+#endif
 
 void HWEventsDRM::HandleBacklightEvent(char *data) {
   event_handler_->HandleBacklightEvent(atof(data));
 }
 
+#ifndef TARGET_USES_UPSTREAM_MSM
 void HWEventsDRM::HandleMMRM(char *data) {
   DTRACE_SCOPED();
   char event_data[kMaxStringLength];
@@ -1141,5 +1162,6 @@ void HWEventsDRM::HandleVmReleaseEvent(char * /*data*/) {
   DLOGI("vm release event data %d", *(reinterpret_cast<uint32_t *>(msm_event->data)));
   event_handler_->HandleVmReleaseEvent();
 }
+#endif
 
 }  // namespace sdm

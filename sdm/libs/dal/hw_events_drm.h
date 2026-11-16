@@ -113,21 +113,26 @@ class HWEventsDRM : public HWEventsInterface {
   void HandleThreadExit(char *data) {}
   void HandleThermal(char *data) {}
   void HandleBlank(char *data) {}
+#ifndef TARGET_USES_UPSTREAM_MSM
   void HandleIdlePowerCollapse(char *data);
   void HandlePanelDead(char *data);
   void HandleHwRecovery(char *data);
   void HandleHistogram(char *data);
+#endif
   void HandleBacklightEvent(char *data);
+#ifndef TARGET_USES_UPSTREAM_MSM
   void HandleMMRM(char *data);
   void HandlePowerEvent(char * /*data*/);
   void HandleVmReleaseEvent(char * /*data*/);
   int SetHwRecoveryEvent(const uint32_t hw_event_code, HWRecoveryEvent *sdm_event_code);
+#endif
   void PopulateHWEventData(const vector<HWEvent> &event_list);
   void WakeUpEventThread();
   DisplayError SetEventParser();
   DisplayError InitializePollFd();
   void CloseFds();
   DisplayError RegisterVSync();
+#ifndef TARGET_USES_UPSTREAM_MSM
   DisplayError RegisterPanelDead(bool enable);
   DisplayError RegisterIdlePowerCollapse(bool enable);
   DisplayError RegisterHwRecovery(bool enable);
@@ -135,6 +140,7 @@ class HWEventsDRM : public HWEventsInterface {
   DisplayError RegisterMMRM(bool enable);
   DisplayError RegisterPowerEvents(bool enable);
   DisplayError RegisterVmReleaseEvents(bool enable);
+#endif
 
   HWEventHandler *event_handler_{};
   vector<HWEventData> event_data_list_{};
