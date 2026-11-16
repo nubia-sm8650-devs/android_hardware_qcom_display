@@ -3445,6 +3445,8 @@ DisplayError HWDeviceDRM::SetupConcurrentWritebackModes(int32_t writeback_id) {
     modes.push_back(item.mode);
   }
 
+  int ret = -EINVAL;
+#ifdef DRM_IOCTL_SDE_WB_CONFIG
   // Inform the mode list to driver.
   struct sde_drm_wb_cfg cwb_cfg = {};
   cwb_cfg.connector_id = cwb_config_.token.conn_id;
@@ -3452,13 +3454,13 @@ DisplayError HWDeviceDRM::SetupConcurrentWritebackModes(int32_t writeback_id) {
   cwb_cfg.count_modes = UINT32(modes.size());
   cwb_cfg.modes = (uint64_t)modes.data();
 
-  int ret = -EINVAL;
-#ifdef DRM_IOCTL_SDE_WB_CONFIG
   ret = drmIoctl(dev_fd_, DRM_IOCTL_SDE_WB_CONFIG, &cwb_cfg);
 #endif
   if (ret) {
     drm_mgr_intf_->UnregisterDisplay(&(cwb_config_.token));
+#ifdef DRM_IOCTL_SDE_WB_CONFIG
     DLOGE("Dump CWBConfig: mode_count %d flags %x", cwb_cfg.count_modes, cwb_cfg.flags);
+#endif
     DumpConnectorModeInfo();
     return kErrorHardware;
   }

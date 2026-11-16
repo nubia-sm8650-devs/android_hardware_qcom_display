@@ -119,6 +119,8 @@ DisplayError HWVirtualDRM::SetWbConfigs(const HWDisplayAttributes &display_attri
     modes.push_back(item.mode);
   }
 
+  int ret = -EINVAL;
+#ifdef DRM_IOCTL_SDE_WB_CONFIG
   // Inform the updated mode list to the driver
   struct sde_drm_wb_cfg wb_cfg = {};
   wb_cfg.connector_id = token_.conn_id;
@@ -126,12 +128,12 @@ DisplayError HWVirtualDRM::SetWbConfigs(const HWDisplayAttributes &display_attri
   wb_cfg.count_modes = UINT32(modes.size());
   wb_cfg.modes = (uint64_t)modes.data();
 
-  int ret = -EINVAL;
-#ifdef DRM_IOCTL_SDE_WB_CONFIG
   ret = drmIoctl(dev_fd_, DRM_IOCTL_SDE_WB_CONFIG, &wb_cfg);
 #endif
   if (ret) {
+#ifdef DRM_IOCTL_SDE_WB_CONFIG
     DLOGE("Dump WBConfig: mode_count %d flags %x", wb_cfg.count_modes, wb_cfg.flags);
+#endif
     DumpConnectorModeInfo();
     return kErrorHardware;
   }
