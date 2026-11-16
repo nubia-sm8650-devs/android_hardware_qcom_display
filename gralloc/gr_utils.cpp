@@ -54,6 +54,16 @@
 #define GRALLOC_USAGE_PRIVATE_VIDEO_HW 1ULL << 52
 #endif
 
+#ifndef DRM_FORMAT_MOD_QCOM_DX
+#define DRM_FORMAT_MOD_QCOM_DX fourcc_mod_code(QCOM, 0x2)
+#endif
+#ifndef DRM_FORMAT_MOD_QCOM_TIGHT
+#define DRM_FORMAT_MOD_QCOM_TIGHT fourcc_mod_code(QCOM, 0x4)
+#endif
+#ifndef DRM_FORMAT_MOD_QCOM_TILE
+#define DRM_FORMAT_MOD_QCOM_TILE fourcc_mod_code(QCOM, 0x8)
+#endif
+
 #define ASTC_BLOCK_SIZE 16
 
 #define ONLY_GPU_USAGE_MASK                                                                       \
