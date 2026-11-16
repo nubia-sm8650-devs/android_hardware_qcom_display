@@ -68,6 +68,7 @@
 
 #include "hw_scale_drm.h"
 
+#ifndef TARGET_USES_UPSTREAM_MSM
 #define __CLASS__ "HWScaleDRM"
 
 namespace sdm {
@@ -228,3 +229,4 @@ void HWScaleDRM::SetScalerV2(const HWScaleData &scale_data, sde_drm_scaler_v2 *s
 }
 
 }  // namespace sdm
+#endif

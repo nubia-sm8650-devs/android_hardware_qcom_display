@@ -626,11 +626,13 @@ DisplayError HWDeviceDRM::Init() {
   PopulateHWPanelInfo();
   UpdateMixerAttributes();
 
+#ifndef TARGET_USES_UPSTREAM_MSM
   // TODO(user): In future, remove has_qseed3 member, add version and pass version to constructor
   if (hw_resource_.has_qseed3) {
     hw_scale_ = new HWScaleDRM(HWScaleDRM::Version::V2);
   }
 
+#endif
   std::unique_ptr<HWColorManagerDrm> hw_color_mgr(new HWColorManagerDrm());
   hw_color_mgr_ = std::move(hw_color_mgr);
 
@@ -686,7 +688,9 @@ DisplayError HWDeviceDRM::Deinit() {
       err = kErrorHardware;
     }
   }
+#ifndef TARGET_USES_UPSTREAM_MSM
   delete hw_scale_;
+#endif
   registry_.Clear();
   display_attributes_ = {};
   drm_mgr_intf_->DestroyAtomicReq(drm_atomic_intf_);
@@ -1680,6 +1684,7 @@ void HWDeviceDRM::SetupAtomic(Fence::ScopedRef &scoped_ref, HWLayersInfo *hw_lay
           SetSrcConfig(layer.input_buffer, hw_rotator_session->mode, &config);
           drm_atomic_intf_->Perform(DRMOps::PLANE_SET_SRC_CONFIG, pipe_id, config);;
 
+#ifndef TARGET_USES_UPSTREAM_MSM
           if (hw_scale_) {
             SDEScaler scaler_output = {};
             hw_scale_->SetScaler(pipe_info->scale_data, &scaler_output);
@@ -1689,6 +1694,7 @@ void HWDeviceDRM::SetupAtomic(Fence::ScopedRef &scoped_ref, HWLayersInfo *hw_lay
                                         reinterpret_cast<uint64_t>(&scaler_output.scaler_v2));
             }
           }
+#endif
 
           DRMCscType csc_type = DRMCscType::kCscTypeMax;
           SelectCscType(layer.input_buffer, &csc_type);
@@ -1755,6 +1761,7 @@ void HWDeviceDRM::SetupAtomic(Fence::ScopedRef &scoped_ref, HWLayersInfo *hw_lay
           }
 
           SetSsppTonemapFeatures(pipe_info);
+#ifndef TARGET_USES_UPSTREAM_MSM
           if (hw_scale_) {
             SDEScaler scaler_output = {};
             hw_scale_->SetScaler(pipe_info->scale_data, &scaler_output);
@@ -1763,6 +1770,7 @@ void HWDeviceDRM::SetupAtomic(Fence::ScopedRef &scoped_ref, HWLayersInfo *hw_lay
                                         reinterpret_cast<uint64_t>(&scaler_output.scaler_v2));
             }
           }
+#endif
         }
 
         drm_atomic_intf_->Perform(DRMOps::PLANE_SET_FB_ID, pipe_id, fb_id);

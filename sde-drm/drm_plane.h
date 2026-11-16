@@ -71,7 +71,9 @@ class DRMPlane {
   void GetCrtc(uint32_t *crtc_id) { *crtc_id = drm_plane_->crtc_id; }
   void SetAssignedCrtc(uint32_t crtc_id) { assigned_crtc_id_ = crtc_id; }
   void SetRequestedCrtc(uint32_t crtc_id) { requested_crtc_id_ = crtc_id; }
+#ifndef TARGET_USES_UPSTREAM_MSM
   bool SetScalerConfig(drmModeAtomicReq *req, uint64_t handle);
+#endif
   bool SetCscConfig(drmModeAtomicReq *req, DRMCscType csc_type);
   bool ConfigureScalerLUT(drmModeAtomicReq *req, uint32_t dir_lut_blob_id,
                           uint32_t cir_lut_blob_id, uint32_t sep_lut_blob_id);
@@ -132,7 +134,9 @@ class DRMPlane {
   std::unordered_map<uint32_t, uint64_t> committed_prop_val_map_ {};
 
   // Only applicable to planes that have scaler
+#ifndef TARGET_USES_UPSTREAM_MSM
   sde_drm_scaler_v2 scaler_v2_config_copy_ = {};
+#endif
 #ifndef TARGET_USES_UPSTREAM_MSM
   sde_drm_csc_v1 csc_config_copy_ = {};
 #endif

@@ -840,6 +840,7 @@ void DRMCrtc::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
                   timeout_ms, true /* cache */, tmp_prop_val_map_);
     } break;
 
+#ifndef TARGET_USES_UPSTREAM_MSM
     case DRMOps::CRTC_SET_DEST_SCALER_CONFIG: {
       uint32_t prop_id = prop_mgr_.GetPropertyId(DRMProperty::DEST_SCALER);
       uint64_t dest_scaler = va_arg(args, uint64_t);
@@ -850,6 +851,7 @@ void DRMCrtc::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
                   reinterpret_cast<uint64_t>(&dest_scale_data_), false /* cache */,
                   tmp_prop_val_map_);
     } break;
+#endif
 
     case DRMOps::CRTC_SET_CAPTURE_MODE: {
       int capture_mode = va_arg(args, int);

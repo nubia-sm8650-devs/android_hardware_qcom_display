@@ -113,22 +113,29 @@ class HWPeripheralDRM : public HWDeviceDRM, public PanelFeaturePropertyIntf {
   virtual DisplayError EnableSelfRefresh(SelfRefreshState self_refresh_state);
   virtual DisplayError SetAlternateDisplayConfig(uint32_t *alt_config);
   virtual DisplayError UpdateTransferTime(uint32_t transfer_time);
+#ifndef TARGET_USES_UPSTREAM_MSM
   void SetDestScalarData(const DestScaleInfoMap dest_scale_info_map);
+#endif
 
  private:
   void InitDestScaler();
+#ifndef TARGET_USES_UPSTREAM_MSM
   void SetDestScalarData(const HWLayersInfo &hw_layer_info);
   void ResetDestScalarCache();
+#endif
   void CreatePanelFeaturePropertyMap();
   void SetIdlePCState() {
     drm_atomic_intf_->Perform(sde_drm::DRMOps::CRTC_SET_IDLE_PC_STATE, token_.crtc_id,
                               idle_pc_state_);
   }
+#ifndef TARGET_USES_UPSTREAM_MSM
   void CacheDestScalarData();
+#endif
   void SetSelfRefreshState();
   void SetVMReqState();
   void ResetPropertyCache();
 
+#ifndef TARGET_USES_UPSTREAM_MSM
   struct DestScalarCache {
     SDEScaler scalar_data = {};
     uint32_t flags = {};
@@ -136,11 +143,16 @@ class HWPeripheralDRM : public HWDeviceDRM, public PanelFeaturePropertyIntf {
 
   sde_drm_dest_scaler_data sde_dest_scalar_data_ = {};
   std::vector<SDEScaler> scalar_data_ = {};
+#endif
   sde_drm::DRMIdlePCState idle_pc_state_ = sde_drm::DRMIdlePCState::NONE;
   bool idle_pc_enabled_ = true;
+#ifndef TARGET_USES_UPSTREAM_MSM
   std::vector<DestScalarCache> dest_scalar_cache_ = {};
+#endif
   drm_msm_ad4_roi_cfg ad4_roi_cfg_ = {};
+#ifndef TARGET_USES_UPSTREAM_MSM
   bool needs_ds_update_ = false;
+#endif
   void PopulateBitClkRates();
   std::vector<uint64_t> bitclk_rates_;
   std::string brightness_base_path_ = "";

@@ -149,7 +149,7 @@ DisplayError HWPeripheralDRM::Init() {
 }
 
 void HWPeripheralDRM::InitDestScaler() {
-#ifndef TRUSTED_VM
+#if !defined(TRUSTED_VM) && !defined(TARGET_USES_UPSTREAM_MSM)
   if (hw_resource_.hw_dest_scalar_info.count) {
     // Do all destination scaler block resource allocations here.
     dest_scaler_blocks_used_ = 1;
@@ -304,7 +304,9 @@ DisplayError HWPeripheralDRM::UpdateTransferTime(uint32_t transfer_time) {
 }
 
 DisplayError HWPeripheralDRM::Validate(HWLayersInfo *hw_layers_info) {
+#ifndef TARGET_USES_UPSTREAM_MSM
   SetDestScalarData(*hw_layers_info);
+#endif
   SetIdlePCState();
   SetSelfRefreshState();
   SetVMReqState();
@@ -313,7 +315,9 @@ DisplayError HWPeripheralDRM::Validate(HWLayersInfo *hw_layers_info) {
 }
 
 DisplayError HWPeripheralDRM::Commit(HWLayersInfo *hw_layers_info) {
+#ifndef TARGET_USES_UPSTREAM_MSM
   SetDestScalarData(*hw_layers_info);
+#endif
 
   int64_t cwb_fence_fd = -1;
   bool has_fence = SetupConcurrentWriteback(*hw_layers_info, false, &cwb_fence_fd);
@@ -335,7 +339,9 @@ DisplayError HWPeripheralDRM::Commit(HWLayersInfo *hw_layers_info) {
     hw_layers_info->output_buffer->release_fence = cwb_fence;
   }
 
+#ifndef TARGET_USES_UPSTREAM_MSM
   CacheDestScalarData();
+#endif
   PostCommitConcurrentWriteback(hw_layers_info->output_buffer);
 
   // Initialize to default after successful commit
@@ -362,6 +368,7 @@ DisplayError HWPeripheralDRM::Commit(HWLayersInfo *hw_layers_info) {
   return error;
 }
 
+#ifndef TARGET_USES_UPSTREAM_MSM
 void HWPeripheralDRM::ResetDestScalarCache() {
   for (uint32_t j = 0; j < scalar_data_.size(); j++) {
     dest_scalar_cache_[j] = {};
@@ -430,6 +437,7 @@ void HWPeripheralDRM::CacheDestScalarData() {
     needs_ds_update_ = false;
   }
 }
+#endif
 
 void HWPeripheralDRM::SetSelfRefreshState() {
   if (self_refresh_state_ != kSelfRefreshNone) {
@@ -452,7 +460,9 @@ DisplayError HWPeripheralDRM::Flush(HWLayersInfo *hw_layers_info) {
     return err;
   }
 
+#ifndef TARGET_USES_UPSTREAM_MSM
   ResetDestScalarCache();
+#endif
   return kErrorNone;
 }
 
@@ -640,11 +650,13 @@ DisplayError HWPeripheralDRM::PowerOn(const HWQosData &qos_data, SyncPoints *syn
                               sde_drm::DRMIdlePCState::ENABLE);
   }
 
+#ifndef TARGET_USES_UPSTREAM_MSM
   if (sde_dest_scalar_data_.num_dest_scaler) {
     drm_atomic_intf_->Perform(DRMOps::CRTC_SET_DEST_SCALER_CONFIG, token_.crtc_id,
                               reinterpret_cast<uint64_t>(&sde_dest_scalar_data_));
     needs_ds_update_ = true;
   }
+#endif
 
   DisplayError err = HWDeviceDRM::PowerOn(qos_data, sync_points);
   if (err != kErrorNone) {
@@ -656,7 +668,9 @@ DisplayError HWPeripheralDRM::PowerOn(const HWQosData &qos_data, SyncPoints *syn
   active_ = true;
   SetTUIState();
 
+#ifndef TARGET_USES_UPSTREAM_MSM
   CacheDestScalarData();
+#endif
 
   return kErrorNone;
 }

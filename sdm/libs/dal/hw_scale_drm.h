@@ -41,6 +41,7 @@
 
 namespace sdm {
 
+#ifndef TARGET_USES_UPSTREAM_MSM
 struct SDEScaler {
   struct sde_drm_scaler_v2 scaler_v2 = {};
   // More here, maybe in a union
@@ -56,6 +57,7 @@ class HWScaleDRM {
   void SetScalerV2(const HWScaleData &scale, sde_drm_scaler_v2 *scaler_v2);
   Version version_ = Version::V2;
 };
+#endif
 
 }  // namespace sdm
 

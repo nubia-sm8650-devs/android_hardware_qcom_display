@@ -337,7 +337,9 @@ class HWDeviceDRM : public HWInterface {
   sde_drm::DRMDisplayToken token_ = {};
   HWResourceInfo hw_resource_ = {};
   HWPanelInfo hw_panel_info_ = {};
+#ifndef TARGET_USES_UPSTREAM_MSM
   HWScaleDRM *hw_scale_ = {};
+#endif
   sde_drm::DRMManagerInterface *drm_mgr_intf_ = {};
   sde_drm::DRMAtomicReqInterface *drm_atomic_intf_ = {};
   std::vector<HWDisplayAttributes> display_attributes_ = {};

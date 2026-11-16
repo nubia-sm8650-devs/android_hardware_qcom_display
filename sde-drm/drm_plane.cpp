@@ -1356,6 +1356,7 @@ void DRMPlane::UnsetUcscCscConfig() {
 }
 #endif
 
+#ifndef TARGET_USES_UPSTREAM_MSM
 bool DRMPlane::SetScalerConfig(drmModeAtomicReq *req, uint64_t handle) {
   if (plane_type_info_.type != DRMPlaneType::VIG) {
     return false;
@@ -1379,6 +1380,7 @@ bool DRMPlane::SetScalerConfig(drmModeAtomicReq *req, uint64_t handle) {
 
   return false;
 }
+#endif
 
 void DRMPlane::SetDecimation(drmModeAtomicReq *req, uint32_t prop_id, uint32_t prop_value) {
   if (plane_type_info_.type == DRMPlaneType::DMA || plane_type_info_.master_plane_id) {
@@ -1621,12 +1623,14 @@ void DRMPlane::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
       DRM_LOGV("Plane %d: Setting input fence %d", obj_id, fence);
     } break;
 
+#ifndef TARGET_USES_UPSTREAM_MSM
     case DRMOps::PLANE_SET_SCALER_CONFIG: {
       uint64_t handle = va_arg(args, uint64_t);
       if (SetScalerConfig(req, handle)) {
         DRM_LOGV("Plane %d: Setting scaler config", obj_id);
       }
     } break;
+#endif
 
     case DRMOps::PLANE_SET_FB_SECURE_MODE: {
       int secure_mode = va_arg(args, int);

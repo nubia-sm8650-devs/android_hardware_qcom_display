@@ -107,7 +107,9 @@ class DRMCrtc {
 #ifdef SDE_MAX_ROI_V1
   sde_drm_roi_v1 roi_v1_ {};
 #endif
+#ifndef TARGET_USES_UPSTREAM_MSM
   sde_drm_dest_scaler_data dest_scale_data_ = {};
+#endif
   drm_msm_noise_layer_cfg drm_noise_layer_v1_ = {};
   std::vector<std::pair<drm_color_ctm, uint32_t>> ctm_blobs_ = {};
 };
