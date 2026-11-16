@@ -480,6 +480,7 @@ DisplayError HWPeripheralDRM::SetDppsFeature(void *payload, size_t size) {
   feature_id = feature_payload->feature_id;
   value = feature_payload->value;
 
+#ifndef TARGET_USES_UPSTREAM_MSM
   if (feature_id == sde_drm::kFeatureAd4Roi) {
     if (feature_payload->value) {
       DisplayDppsAd4RoiCfg *params = reinterpret_cast<DisplayDppsAd4RoiCfg *>
@@ -499,6 +500,7 @@ DisplayError HWPeripheralDRM::SetDppsFeature(void *payload, size_t size) {
       value = (uint64_t)&ad4_roi_cfg_;
     }
   }
+#endif
 
   if (feature_id == sde_drm::kFeatureLtmHistCtrl)
     ltm_hist_en_ = value;

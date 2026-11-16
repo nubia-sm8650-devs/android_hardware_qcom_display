@@ -149,7 +149,9 @@ class HWPeripheralDRM : public HWDeviceDRM, public PanelFeaturePropertyIntf {
 #ifndef TARGET_USES_UPSTREAM_MSM
   std::vector<DestScalarCache> dest_scalar_cache_ = {};
 #endif
+#ifndef TARGET_USES_UPSTREAM_MSM
   drm_msm_ad4_roi_cfg ad4_roi_cfg_ = {};
+#endif
 #ifndef TARGET_USES_UPSTREAM_MSM
   bool needs_ds_update_ = false;
 #endif
