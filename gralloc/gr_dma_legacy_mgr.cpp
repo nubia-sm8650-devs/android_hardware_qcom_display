@@ -29,6 +29,7 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef TARGET_USES_UPSTREAM_MSM
 #define ATRACE_TAG (ATRACE_TAG_GRAPHICS | ATRACE_TAG_HAL)
 #include <sys/ioctl.h>
 #include <sys/mman.h>
@@ -331,3 +332,4 @@ int DmaLegacyManager::SetBufferPermission(int fd, BufferPermission *buf_perm, in
   return 0;
 }
 }  // namespace gralloc
+#endif

@@ -33,7 +33,9 @@
 #include <cutils/properties.h>
 
 #include "gr_alloc_interface.h"
+#ifndef TARGET_USES_UPSTREAM_MSM
 #include "gr_dma_legacy_mgr.h"
+#endif
 #include "gr_dma_mgr.h"
 
 namespace gralloc {
@@ -43,6 +45,9 @@ AllocInterface *AllocInterface::GetInstance() {
   if (instance)
     return instance;
 
+#ifdef TARGET_USES_UPSTREAM_MSM
+  instance = DmaManager::GetInstance();
+#else
   // Detect DMABUF Heaps usage
   char property[PROPERTY_VALUE_MAX];
   if (property_get(USE_DMA_BUF_HEAPS_PROP, property, NULL) > 0) {
@@ -50,6 +55,7 @@ AllocInterface *AllocInterface::GetInstance() {
   } else {
     instance = DmaLegacyManager::GetInstance();
   }
+#endif
   return instance;
 }
 
