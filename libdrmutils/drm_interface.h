@@ -1094,6 +1094,7 @@ struct DppsFeaturePayload {
   uint64_t value;
 };
 
+#ifndef TARGET_USES_UPSTREAM_MSM
 struct DRMDppsLtmBuffers {
   uint32_t num_of_buffers;
   uint32_t buffer_size;
@@ -1103,6 +1104,7 @@ struct DRMDppsLtmBuffers {
   int status;
 };
 
+#endif
 struct DRMDppsFeatureInfo {
   DRMDPPSFeatureID id;
   uint32_t obj_id;

@@ -39,18 +39,21 @@
 #define __CLASS__ "DRMDppsManagerImp"
 namespace sde_drm {
 
+#ifndef TARGET_USES_UPSTREAM_MSM
 static DRMDppsManagerImp dpps_mgr;
+#endif
 static DRMDppsManagerDummyImp dpps_dummy_mgr;
 
 DRMDppsManagerIntf* GetDppsManagerIntf()
 {
-#if (defined(__ANDROID__))
+#if defined(__ANDROID__) && !defined(TARGET_USES_UPSTREAM_MSM)
     return &dpps_mgr;
 #else
     return &dpps_dummy_mgr;
 #endif
 }
 
+#ifndef TARGET_USES_UPSTREAM_MSM
 DRMDppsManagerImp::~DRMDppsManagerImp() {
   /* clean up the ION buffers for LTM */
   DeInitLtmBuffers();
@@ -603,5 +606,6 @@ int DRMDppsManagerImp::DeInitLtmBuffers() {
   ltm_buffers_ctrl_map_.clear();
   return 0;
 }
+#endif
 
 }  // namespace sde_drm

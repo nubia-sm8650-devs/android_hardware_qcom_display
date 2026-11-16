@@ -39,6 +39,7 @@
 
 namespace sde_drm {
 
+#ifndef TARGET_USES_UPSTREAM_MSM
 struct DRMDppsPropInfo {
   /* params to be set in Init */
   uint32_t version;
@@ -79,6 +80,7 @@ class DRMDppsManagerImp : public DRMDppsManagerIntf {
   std::vector<std::pair<uint32_t, DRMDppsLtmBuffers>> ltm_buffers_map_;
   std::mutex api_lock_;
 };
+#endif
 
 class DRMDppsManagerDummyImp : public DRMDppsManagerIntf {
  public:
