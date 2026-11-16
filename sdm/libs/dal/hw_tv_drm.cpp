@@ -109,6 +109,7 @@ using sde_drm::DRMColorspace;
 
 namespace sdm {
 
+#ifndef TARGET_USES_UPSTREAM_MSM
 static uint64_t timeval_diff(std::chrono::time_point<SteadyClock> &start,
                              std::chrono::time_point<SteadyClock> &end) {
   return std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
@@ -138,6 +139,7 @@ static float GetMaxOrAverageLuminance(float luminance) {
 static float GetMinLuminance(float luminance, float max_luminance) {
   return (max_luminance * ((luminance / 255.0f) * (luminance / 255.0f)) / 100.0f);
 }
+#endif
 
 HWTVDRM::HWTVDRM(int32_t display_id, BufferAllocator *buffer_allocator,
                  HWInfoInterface *hw_info_intf)
@@ -198,6 +200,7 @@ DisplayError HWTVDRM::GetConfigIndex(char *mode, uint32_t *index) {
 }
 
 DisplayError HWTVDRM::Flush(HWLayersInfo *hw_layers_info) {
+#ifndef TARGET_USES_UPSTREAM_MSM
   if (hw_panel_info_.hdr_enabled) {
     memset(&hdr_metadata_, 0, sizeof(hdr_metadata_));
     hdr_metadata_.hdr_supported = 1;
@@ -205,11 +208,13 @@ DisplayError HWTVDRM::Flush(HWLayersInfo *hw_layers_info) {
     drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_HDR_METADATA, token_.conn_id,
                               &hdr_metadata_);
   }
+#endif
 
   return HWDeviceDRM::Flush(hw_layers_info);
 }
 
 DisplayError HWTVDRM::Deinit() {
+#ifndef TARGET_USES_UPSTREAM_MSM
   if (hw_panel_info_.hdr_enabled) {
     memset(&hdr_metadata_, 0, sizeof(hdr_metadata_));
     hdr_metadata_.hdr_supported = 1;
@@ -217,6 +222,7 @@ DisplayError HWTVDRM::Deinit() {
     drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_HDR_METADATA, token_.conn_id,
                               &hdr_metadata_);
   }
+#endif
 
   return HWDeviceDRM::Deinit();
 }
@@ -290,13 +296,20 @@ void HWTVDRM::PopulateHWPanelInfo() {
   hw_panel_info_ = {};
 
   HWDeviceDRM::PopulateHWPanelInfo();
+#ifndef TARGET_USES_UPSTREAM_MSM
   hw_panel_info_.hdr_enabled = connector_info_.ext_hdr_prop.hdr_supported;
   hw_panel_info_.hdr_plus_enabled = connector_info_.ext_hdr_prop.hdr_plus_supported;
   hw_panel_info_.hdr_metadata_type_one = connector_info_.ext_hdr_prop.hdr_metadata_type_one;
   hw_panel_info_.hdr_eotf = connector_info_.ext_hdr_prop.hdr_eotf;
+#endif
   hw_panel_info_.supported_colorspaces = connector_info_.supported_colorspaces;
   hw_panel_info_.is_pluggable = true;
 
+#ifdef TARGET_USES_UPSTREAM_MSM
+  hw_panel_info_.peak_luminance = kDefaultMaxLuminance;
+  hw_panel_info_.blackness_level = kDefaultMinLuminance;
+  hw_panel_info_.average_luminance = (kDefaultMaxLuminance + kDefaultMinLuminance) / 2.0f;
+#else
   // Convert the raw luminance values from driver to Candela per meter^2 unit.
   float max_luminance = FLOAT(connector_info_.ext_hdr_prop.hdr_max_luminance);
   if (max_luminance != 0.0f) {
@@ -318,6 +331,7 @@ void HWTVDRM::PopulateHWPanelInfo() {
     average_luminance = (hw_panel_info_.peak_luminance + hw_panel_info_.blackness_level) / 2.0f;
   }
   hw_panel_info_.average_luminance = average_luminance;
+#endif
 
   DLOGI("TV Panel: %s%s, type_one = %d, eotf = %d, luminance[max = %f, min = %f, avg = %f]",
         hw_panel_info_.hdr_enabled ? "HDR" : "Non-HDR",
@@ -369,6 +383,9 @@ DisplayError HWTVDRM::UpdateHDRMetaData(HWLayersInfo *hw_layers_info) {
     drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_COLORSPACE, token_.conn_id, colorspace);
   }
 
+#ifdef TARGET_USES_UPSTREAM_MSM
+  return kErrorNone;
+#else
   if (!hw_panel_info_.hdr_enabled) {
     return kErrorNone;
   }
@@ -469,8 +486,10 @@ DisplayError HWTVDRM::UpdateHDRMetaData(HWLayersInfo *hw_layers_info) {
   }
 
   return error;
+#endif
 }
 
+#ifndef TARGET_USES_UPSTREAM_MSM
 void HWTVDRM::DumpHDRMetaData(HWHDRLayerInfo::HDROperation operation) {
   DLOGI("Operation = %d, HDR Metadata: MaxDisplayLuminance = %d MinDisplayLuminance = %d\n"
         "MaxContentLightLevel = %d MaxAverageLightLevel = %d Red_x = %d Red_y = %d Green_x = %d\n"
@@ -484,7 +503,9 @@ void HWTVDRM::DumpHDRMetaData(HWHDRLayerInfo::HDROperation operation) {
         hdr_metadata_.white_point_x, hdr_metadata_.white_point_y, hdr_metadata_.eotf,
         hdr_metadata_.hdr_plus_payload_size);
 }
+#endif
 
+#ifndef TARGET_USES_UPSTREAM_MSM
 void HWTVDRM::InitMaxHDRMetaData() {
   memset(&hdr_metadata_, 0, sizeof(hdr_metadata_));
   hdr_metadata_.hdr_supported = 1;
@@ -513,6 +534,7 @@ void HWTVDRM::InitMaxHDRMetaData() {
   hdr_metadata_.max_content_light_level = 100000000;  // 10000 nits brightest pixel in content
   hdr_metadata_.max_average_light_level = 100000000;  // 10000 nits brightest frame in content
 }
+#endif
 
 DisplayError HWTVDRM::PowerOn(const HWQosData &qos_data, SyncPoints *sync_points) {
   DTRACE_SCOPED();
@@ -525,12 +547,14 @@ DisplayError HWTVDRM::PowerOn(const HWQosData &qos_data, SyncPoints *sync_points
     drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_CRTC, token_.conn_id, token_.crtc_id);
     drmModeModeInfo current_mode = connector_info_.modes[current_mode_index_].mode;
     drm_atomic_intf_->Perform(DRMOps::CRTC_SET_MODE, token_.crtc_id, &current_mode);
+#ifndef TARGET_USES_UPSTREAM_MSM
     if (hw_panel_info_.hdr_enabled) {
       hdr_metadata_.hdr_supported = 1;
       hdr_metadata_.hdr_state = HDR_DISABLE;
       drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_HDR_METADATA, token_.conn_id,
                                 &hdr_metadata_);
     }
+#endif
   }
 
   return HWDeviceDRM::PowerOn(qos_data, sync_points);

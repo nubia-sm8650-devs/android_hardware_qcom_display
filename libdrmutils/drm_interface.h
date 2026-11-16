@@ -960,8 +960,10 @@ struct DRMConnectorInfo {
   // Valid only if type is DRM_MODE_CONNECTOR_VIRTUAL
   uint32_t max_linewidth;
   DRMRotation panel_orientation;
+#ifndef TARGET_USES_UPSTREAM_MSM
   drm_panel_hdr_properties panel_hdr_prop;
   drm_msm_ext_hdr_properties ext_hdr_prop;
+#endif
   bool qsync_support;
   // Connection status of this connector
   bool is_connected;

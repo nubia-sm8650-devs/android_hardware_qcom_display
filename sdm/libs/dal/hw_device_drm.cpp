@@ -959,6 +959,7 @@ void HWDeviceDRM::PopulateHWPanelInfo() {
 
   hw_panel_info_.is_primary_panel = connector_info_.is_primary;
   hw_panel_info_.is_pluggable = 0;
+#ifndef TARGET_USES_UPSTREAM_MSM
   hw_panel_info_.hdr_enabled = connector_info_.panel_hdr_prop.hdr_enabled;
   // Convert the luminance values to cd/m^2 units.
   hw_panel_info_.peak_luminance = FLOAT(connector_info_.panel_hdr_prop.peak_brightness) / 10000.0f;
@@ -974,6 +975,7 @@ void HWDeviceDRM::PopulateHWPanelInfo() {
   hw_panel_info_.primaries.green[1] = connector_info_.panel_hdr_prop.display_primaries[5];
   hw_panel_info_.primaries.blue[0] = connector_info_.panel_hdr_prop.display_primaries[6];
   hw_panel_info_.primaries.blue[1] = connector_info_.panel_hdr_prop.display_primaries[7];
+#endif
   hw_panel_info_.dyn_bitclk_support = connector_info_.dyn_bitclk_support;
 
   // no supprt for 90 rotation only flips or 180 supported

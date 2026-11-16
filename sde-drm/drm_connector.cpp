@@ -725,6 +725,7 @@ void DRMConnector::ParseCapabilities(uint64_t blob_id, DRMConnectorInfo *info) {
   delete[] fmt_str;
 }
 
+#ifndef TARGET_USES_UPSTREAM_MSM
 void DRMConnector::ParseCapabilities(uint64_t blob_id, drm_panel_hdr_properties *hdr_info) {
   drmModePropertyBlobRes *blob = drmModeGetPropertyBlob(fd_, blob_id);
   if (!blob) {
@@ -743,6 +744,7 @@ void DRMConnector::ParseCapabilities(uint64_t blob_id, drm_panel_hdr_properties 
   }
   drmModeFreePropertyBlob(blob);
 }
+#endif
 
 void DRMConnector::ParseModeProperties(uint64_t blob_id, DRMConnectorInfo *info) {
   drmModePropertyBlobRes *blob = drmModeGetPropertyBlob(fd_, blob_id);
@@ -924,6 +926,7 @@ void DRMConnector::ParseModeProperties(uint64_t blob_id, DRMConnectorInfo *info)
   delete[] fmt_str;
 }
 
+#ifndef TARGET_USES_UPSTREAM_MSM
 void DRMConnector::ParseCapabilities(uint64_t blob_id, drm_msm_ext_hdr_properties *hdr_info) {
   drmModePropertyBlobRes *blob = drmModeGetPropertyBlob(fd_, blob_id);
   if (!blob) {
@@ -949,6 +952,7 @@ void DRMConnector::ParseCapabilities(uint64_t blob_id, drm_msm_ext_hdr_propertie
   }
   drmModeFreePropertyBlob(blob);
 }
+#endif
 
 void DRMConnector::ParseCapabilities(uint64_t blob_id, std::vector<uint8_t> *edid) {
   drmModePropertyBlobRes *blob = drmModeGetPropertyBlob(fd_, blob_id);
@@ -1040,6 +1044,7 @@ int DRMConnector::GetInfo(DRMConnectorInfo *info) {
 
   uint32_t index = UINT32_MAX;
 
+#ifndef TARGET_USES_UPSTREAM_MSM
   if (prop_mgr_.IsPropertyAvailable(DRMProperty::HDR_PROPERTIES)) {
     index = std::distance(props->props,
                           std::find(props->props, props->props + props->count_props,
@@ -1048,6 +1053,7 @@ int DRMConnector::GetInfo(DRMConnectorInfo *info) {
       ParseCapabilities(props->prop_values[index], &info->panel_hdr_prop);
   }
 
+#endif
   if (prop_mgr_.IsPropertyAvailable(DRMProperty::CAPABILITIES)) {
     index = std::distance(props->props,
                           std::find(props->props, props->props + props->count_props,
@@ -1068,6 +1074,7 @@ int DRMConnector::GetInfo(DRMConnectorInfo *info) {
     SetUpstreamInfo(info);
   }
 
+#ifndef TARGET_USES_UPSTREAM_MSM
   if (prop_mgr_.IsPropertyAvailable(DRMProperty::EXT_HDR_PROPERTIES)) {
     index = std::distance(props->props,
                           std::find(props->props, props->props + props->count_props,
@@ -1076,6 +1083,7 @@ int DRMConnector::GetInfo(DRMConnectorInfo *info) {
       ParseCapabilities(props->prop_values[index], &info->ext_hdr_prop);
   }
 
+#endif
   if (prop_mgr_.IsPropertyAvailable(DRMProperty::TOPOLOGY_CONTROL)) {
     index = std::distance(props->props,
                           std::find(props->props, props->props + props->count_props,
@@ -1245,12 +1253,14 @@ void DRMConnector::Perform(DRMOps code, drmModeAtomicReq *req, va_list args) {
         pp_mgr_->SetPPFeature(req, obj_id, *data);
     } break;
 
+#ifndef TARGET_USES_UPSTREAM_MSM
     case DRMOps::CONNECTOR_SET_HDR_METADATA: {
       drm_msm_ext_hdr_metadata *hdr_metadata = va_arg(args, drm_msm_ext_hdr_metadata *);
       AtomicAddProperty(req, obj_id, prop_mgr_.GetPropertyId(DRMProperty::HDR_METADATA),
                                reinterpret_cast<uint64_t>(hdr_metadata));
     } break;
 
+#endif
     case DRMOps::CONNECTOR_SET_QSYNC_MODE: {
       if (!prop_mgr_.IsPropertyAvailable(DRMProperty::QSYNC_MODE)) {
         return;

@@ -103,9 +103,13 @@ class DRMConnector {
  private:
   void ParseProperties();
   void ParseCapabilities(uint64_t blob_id, DRMConnectorInfo *info);
+#ifndef TARGET_USES_UPSTREAM_MSM
   void ParseCapabilities(uint64_t blob_id, drm_panel_hdr_properties *hdr_info);
+#endif
   void ParseModeProperties(uint64_t blob_id, DRMConnectorInfo *info);
+#ifndef TARGET_USES_UPSTREAM_MSM
   void ParseCapabilities(uint64_t blob_id, drm_msm_ext_hdr_properties *hdr_info);
+#endif
   void ParseCapabilities(uint64_t blob_id, std::vector<uint8_t> *edid);
   void ParseCapabilities(uint64_t blob_id, uint64_t *panel_id);
   void SetUpstreamInfo(DRMConnectorInfo *info);

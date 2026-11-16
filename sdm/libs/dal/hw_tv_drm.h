@@ -58,18 +58,22 @@ class HWTVDRM : public HWDeviceDRM {
 
  private:
   DisplayError UpdateHDRMetaData(HWLayersInfo *hw_layers_info);
+#ifndef TARGET_USES_UPSTREAM_MSM
   void DumpHDRMetaData(HWHDRLayerInfo::HDROperation operation);
   void InitMaxHDRMetaData();
+#endif
 
   const float kDefaultMinLuminance = 0.02f;
   const float kDefaultMaxLuminance = 500.0f;
   const float kMinPeakLuminance = 300.0f;
   const float kMaxPeakLuminance = 1000.0f;
+#ifndef TARGET_USES_UPSTREAM_MSM
   drm_msm_ext_hdr_metadata hdr_metadata_ = {};
   std::chrono::time_point<SteadyClock> hdr_reset_start_;
   std::chrono::time_point<SteadyClock> hdr_reset_end_;
   bool reset_hdr_flag_ = false;
   bool in_multiset_ = false;
+#endif
 };
 
 }  // namespace sdm
