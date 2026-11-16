@@ -3579,8 +3579,10 @@ DisplayError HWDeviceDRM::TeardownConcurrentWriteback(void) {
   if (cwb_config_.dnsc_config) {
     uint32_t conn_id = cwb_config_.token.conn_id;
 
+#ifdef FEATURE_DNSC_BLUR
     dnsc_cfg_ = {};
     drm_atomic_intf_->Perform(DRMOps::CONNECTOR_DNSC_BLR, conn_id, &dnsc_cfg_);
+#endif
     drm_atomic_intf_->Perform(DRMOps::CONNECTOR_WB_USAGE_TYPE, conn_id, 0);
     drm_atomic_intf_->Perform(DRMOps::CONNECTOR_SET_TOPOLOGY_CONTROL, conn_id, 0);
     cwb_config_.dnsc_config = false;
