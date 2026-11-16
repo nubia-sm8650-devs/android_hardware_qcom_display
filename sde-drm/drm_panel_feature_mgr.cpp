@@ -157,14 +157,18 @@ void DRMPanelFeatureMgr::Init(int fd, drmModeRes* res) {
 
   feature_info_tbl_[kDRMPanelFeatureDemuraResources] = DRMPanelFeatureInfo {
     kDRMPanelFeatureDemuraResources, DRM_MODE_OBJECT_CRTC, UINT32_MAX, 1, 0, 0};
+#ifndef TARGET_USES_UPSTREAM_MSM
   feature_info_tbl_[kDRMPanelFeatureDemuraInit] = DRMPanelFeatureInfo {kDRMPanelFeatureDemuraInit,
       DRM_MODE_OBJECT_CRTC, UINT32_MAX, 1, sizeof(drm_msm_dem_cfg), 0};
+#endif
   feature_info_tbl_[kDRMPanelFeaturePanelId] = DRMPanelFeatureInfo {kDRMPanelFeaturePanelId,
       DRM_MODE_OBJECT_CONNECTOR, UINT32_MAX, 1, sizeof(uint64_t), 0};
+#ifndef TARGET_USES_UPSTREAM_MSM
   feature_info_tbl_[kDRMPanelFeatureSPRUDC] = DRMPanelFeatureInfo{
       kDRMPanelFeatureSPRUDC, DRM_MODE_OBJECT_CRTC, UINT32_MAX, 1, sizeof(drm_msm_spr_udc_cfg), 0};
   feature_info_tbl_[kDRMPanelFeatureRCInit] = DRMPanelFeatureInfo {
       kDRMPanelFeatureRCInit, DRM_MODE_OBJECT_CRTC, UINT32_MAX, 1, sizeof(drm_msm_rc_mask_cfg), 0};
+#endif
   feature_info_tbl_[kDRMPanelFeatureSPRPackType] = DRMPanelFeatureInfo {kDRMPanelFeatureSPRPackType,
       DRM_MODE_OBJECT_CONNECTOR, UINT32_MAX, 1, 64, 0};
   feature_info_tbl_[kDRMPanelFeatureDsppIndex] = DRMPanelFeatureInfo {kDRMPanelFeatureDsppIndex,
@@ -175,6 +179,7 @@ void DRMPanelFeatureMgr::Init(int fd, drmModeRes* res) {
     kDRMPanelFeatureDsppDemuraInfo, DRM_MODE_OBJECT_CRTC, UINT32_MAX, 1, 64, 0};
   feature_info_tbl_[kDRMPanelFeatureDsppRCInfo] = DRMPanelFeatureInfo {
     kDRMPanelFeatureDsppRCInfo, DRM_MODE_OBJECT_CRTC, UINT32_MAX, 1, 64, 0};
+#ifndef TARGET_USES_UPSTREAM_MSM
   feature_info_tbl_[kDRMPanelFeatureDemuraCfg0Param2] =
       DRMPanelFeatureInfo{kDRMPanelFeatureDemuraCfg0Param2,
                           DRM_MODE_OBJECT_CRTC,
@@ -182,6 +187,7 @@ void DRMPanelFeatureMgr::Init(int fd, drmModeRes* res) {
                           1,
                           sizeof(drm_msm_dem_cfg0_param2),
                           0};
+#endif
 }
 
 void DRMPanelFeatureMgr::Deinit() {
@@ -228,6 +234,7 @@ int DRMPanelFeatureMgr::InitObjectProps(int obj_id, int obj_type) {
       continue;
     }
 
+#ifndef TARGET_USES_UPSTREAM_MSM
     if (prop_enum == DRMProperty::SPR_INIT_CFG_V1) {
       drm_property_map_[kDRMPanelFeatureSPRInit] = DRMProperty::SPR_INIT_CFG_V1;
       feature_info_tbl_[kDRMPanelFeatureSPRInit] = DRMPanelFeatureInfo{kDRMPanelFeatureSPRInit,
@@ -245,6 +252,7 @@ int DRMPanelFeatureMgr::InitObjectProps(int obj_id, int obj_type) {
                                                                        sizeof(drm_msm_spr_init_cfg),
                                                                        0};
     }
+#endif
 
     prop_mgr_.SetPropertyId(prop_enum, info->prop_id);
     drmModeFreeProperty(info);
