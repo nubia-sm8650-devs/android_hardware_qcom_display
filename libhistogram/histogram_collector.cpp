@@ -40,7 +40,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include <display/drm/msm_drm_pp.h>
+#include "msm_drm_hist.h"
 #include <xf86drm.h>
 #include <xf86drmMode.h>
 
