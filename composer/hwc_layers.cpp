@@ -33,7 +33,7 @@
 #include <gr_utils.h>
 
 #ifdef UDFPS_ZPOS
-#include <display/drm/sde_drm.h>
+#include <drm_interface.h>
 #endif
 
 #define __CLASS__ "HWCLayer"

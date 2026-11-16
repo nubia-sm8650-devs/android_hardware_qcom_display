@@ -85,6 +85,10 @@
 #define DRM_MODE_FLAG_CMD_MODE_PANEL 0x02
 #endif
 
+#ifndef FOD_PRESSED_LAYER_ZORDER
+#define FOD_PRESSED_LAYER_ZORDER 0x20000000u
+#endif
+
 namespace sde_drm {
 
 typedef std::map<std::pair<uint32_t, uint64_t>, float> CompRatioMap;
