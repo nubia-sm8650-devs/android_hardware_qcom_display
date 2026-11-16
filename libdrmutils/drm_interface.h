@@ -77,6 +77,14 @@
 #include <drm/msm_drm.h>
 #include <display/drm/msm_drm_pp.h>
 #include <display/drm/sde_drm.h>
+
+#ifndef DRM_MODE_FLAG_VID_MODE_PANEL
+#define DRM_MODE_FLAG_VID_MODE_PANEL 0x01
+#endif
+#ifndef DRM_MODE_FLAG_CMD_MODE_PANEL
+#define DRM_MODE_FLAG_CMD_MODE_PANEL 0x02
+#endif
+
 namespace sde_drm {
 
 typedef std::map<std::pair<uint32_t, uint64_t>, float> CompRatioMap;
