@@ -66,7 +66,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <drm.h>
+#ifndef TARGET_USES_UPSTREAM_MSM
 #include <display/drm/sde_drm.h>
+#endif
 #include <drm/msm_drm.h>
 #include <drm_logger.h>
 #include <errno.h>

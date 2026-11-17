@@ -73,7 +73,9 @@
 #include <memory>
 #include <memory>
 #include <drm/msm_drm.h>
+#ifndef TARGET_USES_UPSTREAM_MSM
 #include <display/drm/sde_drm.h>
+#endif
 #include <mutex>
 #include <set>
 #include "drm_pp_manager.h"

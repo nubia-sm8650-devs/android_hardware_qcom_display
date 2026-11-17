@@ -71,7 +71,9 @@
 // version drm/drm.h
 #include <drm_logger.h>
 #include <drm/drm_fourcc.h>
+#ifndef TARGET_USES_UPSTREAM_MSM
 #include <display/drm/sde_drm.h>
+#endif
 
 #include <cinttypes>
 #include <cstring>

@@ -34,7 +34,9 @@
 #ifndef __DRM_PLANE_H__
 #define __DRM_PLANE_H__
 
+#ifndef TARGET_USES_UPSTREAM_MSM
 #include <display/drm/sde_drm.h>
+#endif
 #include <drm_interface.h>
 #include <xf86drm.h>
 #include <xf86drmMode.h>

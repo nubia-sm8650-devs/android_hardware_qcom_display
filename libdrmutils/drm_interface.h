@@ -75,8 +75,10 @@
 #include "xf86drm.h"
 #include "xf86drmMode.h"
 #include <drm/msm_drm.h>
+#ifndef TARGET_USES_UPSTREAM_MSM
 #include <display/drm/msm_drm_pp.h>
 #include <display/drm/sde_drm.h>
+#endif
 
 #ifndef DRM_MODE_FLAG_VID_MODE_PANEL
 #define DRM_MODE_FLAG_VID_MODE_PANEL 0x01

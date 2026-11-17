@@ -56,7 +56,9 @@
 #include <utils/debug.h>
 #include <utils/formats.h>
 #include <utils/sys.h>
+#ifndef TARGET_USES_UPSTREAM_MSM
 #include <display/drm/sde_drm.h>
+#endif
 #include <private/color_params.h>
 #include <utils/rect.h>
 #include <utils/utils.h>
@@ -75,7 +77,7 @@
 
 #include "hw_device_drm.h"
 
-#ifdef UDFPS_ZPOS
+#if defined(UDFPS_ZPOS) && !defined(TARGET_USES_UPSTREAM_MSM)
 #include <display/drm/sde_drm.h>
 #endif
 

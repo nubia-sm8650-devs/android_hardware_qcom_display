@@ -34,7 +34,7 @@
 #include <vector>
 #include <string>
 
-#ifndef QMAA
+#if !defined(QMAA) && !defined(TARGET_USES_UPSTREAM_MSM)
 #include <linux/msm_ion.h>
 #endif
 #include "gr_allocator.h"

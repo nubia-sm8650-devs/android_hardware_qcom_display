@@ -78,7 +78,9 @@
 #include <utils/sys.h>
 #include <xf86drm.h>
 #include <drm/msm_drm.h>
+#ifndef TARGET_USES_UPSTREAM_MSM
 #include <display/drm/sde_drm.h>
+#endif
 
 #include <algorithm>
 #include <array>

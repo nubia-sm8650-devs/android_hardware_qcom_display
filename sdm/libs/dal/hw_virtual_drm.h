@@ -68,7 +68,9 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "hw_device_drm.h"
 #include <drm/msm_drm.h>
+#ifndef TARGET_USES_UPSTREAM_MSM
 #include <display/drm/sde_drm.h>
+#endif
 #include <vector>
 
 namespace sdm {

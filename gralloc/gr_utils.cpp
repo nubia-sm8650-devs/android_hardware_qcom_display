@@ -33,7 +33,9 @@
 
 #ifndef QMAA
 #include "mmm_color_fmt.h"
+#ifndef TARGET_USES_UPSTREAM_MSM
 #include <display/drm/sde_drm.h>
+#endif
 #endif
 
 #include <drm/drm_fourcc.h>

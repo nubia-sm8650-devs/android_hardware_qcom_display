@@ -71,7 +71,9 @@
 #include <drm_master.h>
 #include <drm_res_mgr.h>
 #include <fcntl.h>
+#ifndef TARGET_USES_UPSTREAM_MSM
 #include <display/media/msm_sde_rotator.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

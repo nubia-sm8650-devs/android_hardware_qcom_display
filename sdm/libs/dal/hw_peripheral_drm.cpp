@@ -69,7 +69,9 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdlib.h>
 #include <unistd.h>
 #include <drm_master.h>
+#ifndef TARGET_USES_UPSTREAM_MSM
 #include <display/drm/sde_drm.h>
+#endif
 #include <utils/debug.h>
 #include <utils/sys.h>
 #include <utils/rect.h>
